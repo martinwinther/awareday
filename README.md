@@ -41,3 +41,18 @@ Per-user Firestore subcollections:
 
 ## Status
 Project planning and architecture documents live in `docs/` (gitignored in this repo).
+
+Minimal project foundation is in place:
+- Next.js App Router scaffold
+- TypeScript configuration
+- Tailwind CSS setup
+- ESLint + Prettier configuration
+- Firebase client app initialization scaffold (env-driven)
+
+## Local setup
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+

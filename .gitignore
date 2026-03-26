@@ -2,3 +2,17 @@
 /.idea
 /docs
 AGENTS.md
+.DS_Store
+
+# Node / Next.js
+node_modules
+.next
+out
+dist
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
