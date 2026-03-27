@@ -5,7 +5,7 @@ import type {
   EventEntryDocument,
   EventLabelDocument,
 } from "./models";
-import { firestoreDb } from "@/lib/firebase/firestore";
+import { getFirestoreDb } from "@/lib/firebase/firestore";
 
 export type UserScopedCollectionName =
   | "activityLabels"
@@ -24,13 +24,13 @@ export function userScopedCollectionPath(
   return `${userDocumentPath(userId)}/${collectionName}`;
 }
 
-export function userDocumentRef(userId: string, db: Firestore = firestoreDb) {
+export function userDocumentRef(userId: string, db: Firestore = getFirestoreDb()) {
   return doc(db, userDocumentPath(userId));
 }
 
 export function activityLabelsCollectionRef(
   userId: string,
-  db: Firestore = firestoreDb
+  db: Firestore = getFirestoreDb()
 ): CollectionReference<ActivityLabelDocument> {
   return collection(
     db,
@@ -40,14 +40,14 @@ export function activityLabelsCollectionRef(
 
 export function eventLabelsCollectionRef(
   userId: string,
-  db: Firestore = firestoreDb
+  db: Firestore = getFirestoreDb()
 ): CollectionReference<EventLabelDocument> {
   return collection(db, userScopedCollectionPath(userId, "eventLabels")) as CollectionReference<EventLabelDocument>;
 }
 
 export function activityEntriesCollectionRef(
   userId: string,
-  db: Firestore = firestoreDb
+  db: Firestore = getFirestoreDb()
 ): CollectionReference<ActivityEntryDocument> {
   return collection(
     db,
@@ -57,7 +57,7 @@ export function activityEntriesCollectionRef(
 
 export function eventEntriesCollectionRef(
   userId: string,
-  db: Firestore = firestoreDb
+  db: Firestore = getFirestoreDb()
 ): CollectionReference<EventEntryDocument> {
   return collection(db, userScopedCollectionPath(userId, "eventEntries")) as CollectionReference<EventEntryDocument>;
 }

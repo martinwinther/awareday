@@ -56,3 +56,37 @@ cp .env.example .env.local
 npm run dev
 ```
 
+Fill `.env.local` with your Firebase Web App config from Project settings.
+
+Required for this app:
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+Optional (supported by the config loader):
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+
+Firebase project checklist for current MVP foundation:
+- Firebase Authentication enabled with Email/Password and Google providers on
+- `localhost` added to Firebase Authentication authorized domains for local Google sign-in
+- Firestore database created for the same project
+- Client config values copied into `.env.local` (never commit `.env.local`)
+
+## Firestore security rules
+This repository uses strict per-user Firestore rules for these collections:
+- `users/{userId}/activityLabels`
+- `users/{userId}/eventLabels`
+- `users/{userId}/activityEntries`
+- `users/{userId}/eventEntries`
+
+Rules are defined in `firestore.rules` and linked in `firebase.json`.
+
+Apply rules to your Firebase project (with Firebase CLI configured):
+```bash
+firebase use <your-project-id>
+firebase deploy --only firestore:rules
+```
+

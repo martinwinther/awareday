@@ -2,54 +2,47 @@
 
 import { useEffect, useState } from "react";
 import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
+  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   type Auth,
   type User,
 } from "firebase/auth";
-import { firebaseApp } from "./client";
-
-const requiredFirebaseEnv = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
-] as const;
-
-function getMissingFirebaseEnvKeys(): string[] {
-  return requiredFirebaseEnv.filter((key) => !process.env[key]);
-}
+import { buildFirebaseConfigError, getFirebaseApp, isFirebaseClientConfigured } from "./client";
 
 function getClientAuth(): Auth | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  if (getMissingFirebaseEnvKeys().length > 0) {
+  if (!isFirebaseClientConfigured()) {
     return null;
   }
 
-  return getAuth(firebaseApp);
-}
-
-function buildFirebaseConfigError(): Error {
-  const missingKeys = getMissingFirebaseEnvKeys();
-
-  if (missingKeys.length === 0) {
-    return new Error("Firebase auth is unavailable right now.");
-  }
-
-  return new Error(
-    `Firebase auth is not configured. Missing: ${missingKeys.join(", ")}`
-  );
+  return getAuth(getFirebaseApp());
 }
 
 type AuthUserState = {
   isLoading: boolean;
   user: User | null;
 };
+
+type EmailSignInInput = {
+  method: "email";
+  email: string;
+  password: string;
+  intent: "signin" | "signup";
+};
+
+type GoogleSignInInput = {
+  method: "google";
+};
+
+export type MvpSignInInput = EmailSignInInput | GoogleSignInInput;
 
 export function useAuthUser(): AuthUserState {
   const [state, setState] = useState<AuthUserState>({
@@ -81,21 +74,42 @@ export function useAuthUser(): AuthUserState {
   return state;
 }
 
-export async function signInForMvp(): Promise<void> {
+export async function signInForMvp(input: MvpSignInInput): Promise<void> {
   const auth = getClientAuth();
 
   if (!auth) {
-    throw buildFirebaseConfigError();
+    throw buildFirebaseConfigError("Firebase auth");
   }
 
-  await signInAnonymously(auth);
+  if (input.method === "google") {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    return;
+  }
+
+  const email = input.email.trim();
+
+  if (email.length === 0) {
+    throw new Error("Enter an email address.");
+  }
+
+  if (input.password.length === 0) {
+    throw new Error("Enter a password.");
+  }
+
+  if (input.intent === "signup") {
+    await createUserWithEmailAndPassword(auth, email, input.password);
+    return;
+  }
+
+  await signInWithEmailAndPassword(auth, email, input.password);
 }
 
 export async function signOutCurrentUser(): Promise<void> {
   const auth = getClientAuth();
 
   if (!auth) {
-    throw buildFirebaseConfigError();
+    throw buildFirebaseConfigError("Firebase auth");
   }
 
   await signOut(auth);

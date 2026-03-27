@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    function isActivityLabelDocument(data, userId) {
+      return data.keys().hasOnly([
+          'userId',
+          'name',
+          'normalizedName',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.keys().hasAll([
+          'userId',
+          'name',
+          'normalizedName',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.userId == userId &&
+        isString(data.name) &&
+        isString(data.normalizedName) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isEventLabelDocument(data, userId) {
+      return data.keys().hasOnly([
+          'userId',
+          'name',
+          'normalizedName',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.keys().hasAll([
+          'userId',
+          'name',
+          'normalizedName',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.userId == userId &&
+        isString(data.name) &&
+        isString(data.normalizedName) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isActivityEntryDocument(data, userId) {
+      return data.keys().hasOnly([
+          'userId',
+          'label',
+          'normalizedLabel',
+          'action',
+          'timestamp',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.keys().hasAll([
+          'userId',
+          'label',
+          'normalizedLabel',
+          'action',
+          'timestamp',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.userId == userId &&
+        isString(data.label) &&
+        isString(data.normalizedLabel) &&
+        data.action in ['start', 'end'] &&
+        data.timestamp is timestamp &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isEventEntryDocument(data, userId) {
+      return data.keys().hasOnly([
+          'userId',
+          'label',
+          'normalizedLabel',
+          'timestamp',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.keys().hasAll([
+          'userId',
+          'label',
+          'normalizedLabel',
+          'timestamp',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        data.userId == userId &&
+        isString(data.label) &&
+        isString(data.normalizedLabel) &&
+        data.timestamp is timestamp &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /activityLabels/{labelId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isActivityLabelDocument(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          isActivityLabelDocument(request.resource.data, userId) &&
+          resource.data.userId == request.resource.data.userId &&
+          resource.data.createdAt == request.resource.data.createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      match /eventLabels/{labelId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isEventLabelDocument(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          isEventLabelDocument(request.resource.data, userId) &&
+          resource.data.userId == request.resource.data.userId &&
+          resource.data.createdAt == request.resource.data.createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      match /activityEntries/{entryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isActivityEntryDocument(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          isActivityEntryDocument(request.resource.data, userId) &&
+          resource.data.userId == request.resource.data.userId &&
+          resource.data.createdAt == request.resource.data.createdAt;
+        allow delete: if isOwner(userId);
+      }
+
+      match /eventEntries/{entryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isEventEntryDocument(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          isEventEntryDocument(request.resource.data, userId) &&
+          resource.data.userId == request.resource.data.userId &&
+          resource.data.createdAt == request.resource.data.createdAt;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
+
