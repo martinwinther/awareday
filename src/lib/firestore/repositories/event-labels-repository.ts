@@ -3,10 +3,12 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   orderBy,
   query,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import type { EventLabel, EventLabelDocument } from "@/lib/firestore/models";
 import { cleanLabelName, normalizeLabelName } from "@/lib/firestore/normalize-label";
@@ -47,6 +49,28 @@ export async function createEventLabel(input: CreateEventLabelInput): Promise<Ev
     id: documentRef.id,
     ...created,
   };
+}
+
+export async function createEventLabelIfMissing(input: CreateEventLabelInput): Promise<EventLabel> {
+  const name = cleanLabelName(input.name);
+  const normalizedName = normalizeLabelName(name);
+  const collectionRef = eventLabelsCollectionRef(input.userId);
+  const existingQuery = query(collectionRef, where("normalizedName", "==", normalizedName), limit(1));
+  const existingSnapshot = await getDocs(existingQuery);
+
+  if (!existingSnapshot.empty) {
+    const existing = existingSnapshot.docs[0];
+
+    return {
+      id: existing.id,
+      ...existing.data(),
+    };
+  }
+
+  return createEventLabel({
+    userId: input.userId,
+    name,
+  });
 }
 
 export async function listEventLabels(userId: string): Promise<EventLabel[]> {

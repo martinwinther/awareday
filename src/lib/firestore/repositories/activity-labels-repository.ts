@@ -3,10 +3,12 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   orderBy,
   query,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import type { ActivityLabel, ActivityLabelDocument } from "@/lib/firestore/models";
 import { cleanLabelName, normalizeLabelName } from "@/lib/firestore/normalize-label";
@@ -47,6 +49,30 @@ export async function createActivityLabel(input: CreateActivityLabelInput): Prom
     id: documentRef.id,
     ...created,
   };
+}
+
+export async function createActivityLabelIfMissing(
+  input: CreateActivityLabelInput
+): Promise<ActivityLabel> {
+  const name = cleanLabelName(input.name);
+  const normalizedName = normalizeLabelName(name);
+  const collectionRef = activityLabelsCollectionRef(input.userId);
+  const existingQuery = query(collectionRef, where("normalizedName", "==", normalizedName), limit(1));
+  const existingSnapshot = await getDocs(existingQuery);
+
+  if (!existingSnapshot.empty) {
+    const existing = existingSnapshot.docs[0];
+
+    return {
+      id: existing.id,
+      ...existing.data(),
+    };
+  }
+
+  return createActivityLabel({
+    userId: input.userId,
+    name,
+  });
 }
 
 export async function listActivityLabels(userId: string): Promise<ActivityLabel[]> {

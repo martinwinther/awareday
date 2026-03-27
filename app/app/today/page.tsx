@@ -5,20 +5,27 @@ import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
-import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
+import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
+import type { ActivityAction, ActivityEntry, EventEntry } from "@/lib/firestore/models";
 import { normalizeLabelName } from "@/lib/firestore/normalize-label";
 import {
+  createActivityLabelIfMissing,
   createActivityEntry,
+  createEventLabelIfMissing,
   createEventEntry,
+  deleteActivityEntry,
   deleteEventEntry,
   listActivityEntries,
+  listActivityLabels,
+  listEventLabels,
   listTodayEventEntries,
+  updateActivityEntry,
   updateEventEntry,
 } from "@/lib/firestore/repositories";
 import { useAuthUser } from "@/lib/firebase/auth";
 
-const quickActivityLabels = ["Work", "Walk dog", "Cooking"] as const;
-const quickEventLabels = ["Coffee", "Water", "Energy drink"] as const;
+const fallbackQuickActivityLabels = ["Work", "Walk dog", "Cooking"] as const;
+const fallbackQuickEventLabels = ["Coffee", "Water", "Energy drink"] as const;
 
 function formatEventTime(entry: EventEntry): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -28,6 +35,13 @@ function formatEventTime(entry: EventEntry): string {
 }
 
 function formatActivityStartTime(entry: ActivityEntry): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(entry.timestamp.toDate());
+}
+
+function formatActivityEntryTime(entry: ActivityEntry): string {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -79,6 +93,8 @@ export default function TodayPage() {
   const { user } = useAuthUser();
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [entries, setEntries] = useState<EventEntry[]>([]);
+  const [activityQuickLabels, setActivityQuickLabels] = useState<string[] | null>(null);
+  const [eventQuickLabels, setEventQuickLabels] = useState<string[] | null>(null);
   const [activityLabelInput, setActivityLabelInput] = useState("");
   const [eventLabelInput, setEventLabelInput] = useState("");
   const [isStartingActivity, setIsStartingActivity] = useState(false);
@@ -91,6 +107,10 @@ export default function TodayPage() {
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingLabelInput, setEditingLabelInput] = useState("");
   const [editingTimestampInput, setEditingTimestampInput] = useState("");
+  const [editingActivityEntryId, setEditingActivityEntryId] = useState<string | null>(null);
+  const [editingActivityLabelInput, setEditingActivityLabelInput] = useState("");
+  const [editingActivityTimestampInput, setEditingActivityTimestampInput] = useState("");
+  const [editingActivityActionInput, setEditingActivityActionInput] = useState<ActivityAction>("start");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadEvents = useCallback(async (userId: string) => {
@@ -127,10 +147,42 @@ export default function TodayPage() {
     }
   }, []);
 
+  const loadActivityLabels = useCallback(async (userId: string) => {
+    try {
+      const labels = await listActivityLabels(userId);
+      setActivityQuickLabels(labels.map((label) => label.name));
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Could not load activity labels. Please try again.");
+      }
+
+      setActivityQuickLabels([]);
+    }
+  }, []);
+
+  const loadEventLabels = useCallback(async (userId: string) => {
+    try {
+      const labels = await listEventLabels(userId);
+      setEventQuickLabels(labels.map((label) => label.name));
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Could not load event labels. Please try again.");
+      }
+
+      setEventQuickLabels([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) {
       setActivityEntries([]);
       setEntries([]);
+      setActivityQuickLabels(null);
+      setEventQuickLabels(null);
       setActivityLabelInput("");
       setIsStartingActivity(false);
       setIsEndingActivity(false);
@@ -141,12 +193,92 @@ export default function TodayPage() {
       setEditingEntryId(null);
       setEditingLabelInput("");
       setEditingTimestampInput("");
+      setEditingActivityEntryId(null);
+      setEditingActivityLabelInput("");
+      setEditingActivityTimestampInput("");
+      setEditingActivityActionInput("start");
       return;
     }
 
     void loadActivities(user.uid);
     void loadEvents(user.uid);
-  }, [loadActivities, loadEvents, user]);
+    void loadActivityLabels(user.uid);
+    void loadEventLabels(user.uid);
+  }, [loadActivities, loadActivityLabels, loadEventLabels, loadEvents, user]);
+
+  const displayedActivityQuickLabels = useMemo(() => {
+    if (activityQuickLabels === null) {
+      return [];
+    }
+
+    if (activityQuickLabels.length === 0) {
+      return [...fallbackQuickActivityLabels];
+    }
+
+    return activityQuickLabels;
+  }, [activityQuickLabels]);
+
+  const displayedEventQuickLabels = useMemo(() => {
+    if (eventQuickLabels === null) {
+      return [];
+    }
+
+    if (eventQuickLabels.length === 0) {
+      return [...fallbackQuickEventLabels];
+    }
+
+    return eventQuickLabels;
+  }, [eventQuickLabels]);
+
+  const saveActivityLabelIfMissing = useCallback(
+    async (label: string) => {
+      if (!user) {
+        return;
+      }
+
+      const savedLabel = await createActivityLabelIfMissing({
+        userId: user.uid,
+        name: label,
+      });
+      const normalizedLabel = savedLabel.normalizedName;
+
+      setActivityQuickLabels((previous) => {
+        const existing = previous ?? [];
+
+        if (existing.some((quickLabel) => normalizeLabelName(quickLabel) === normalizedLabel)) {
+          return existing;
+        }
+
+        return [...existing, savedLabel.name].sort((left, right) => left.localeCompare(right));
+      });
+    },
+    [user]
+  );
+
+  const saveEventLabelIfMissing = useCallback(
+    async (label: string) => {
+      if (!user) {
+        return;
+      }
+
+      const savedLabel = await createEventLabelIfMissing({
+        userId: user.uid,
+        name: label,
+      });
+      const normalizedLabel = savedLabel.normalizedName;
+
+      setEventQuickLabels((previous) => {
+        const existing = previous ?? [];
+
+        if (existing.some((quickLabel) => normalizeLabelName(quickLabel) === normalizedLabel)) {
+          return existing;
+        }
+
+        return [...existing, savedLabel.name].sort((left, right) => left.localeCompare(right));
+      });
+    },
+    [user]
+  );
 
   const openActivitiesToday = useMemo(() => {
     const today = new Date();
@@ -155,6 +287,10 @@ export default function TodayPage() {
   }, [activityEntries]);
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
+
+  const todayTimeline = useMemo(() => {
+    return deriveTodayTimeline(activityEntries, entries, new Date());
+  }, [activityEntries, entries]);
 
   const todayActivityTotals = useMemo(() => {
     return deriveDailyActivityTotals(activityEntries, new Date());
@@ -208,6 +344,12 @@ export default function TodayPage() {
           label: cleaned,
         });
 
+        try {
+          await saveEventLabelIfMissing(cleaned);
+        } catch {
+          setErrorMessage("Event logged, but could not save the label as a quick chip.");
+        }
+
         setEventLabelInput("");
         await loadEvents(user.uid);
       } catch (error) {
@@ -220,7 +362,7 @@ export default function TodayPage() {
         setIsSubmitting(false);
       }
     },
-    [loadEvents, user]
+    [loadEvents, saveEventLabelIfMissing, user]
   );
 
   const handleStartActivity = useCallback(
@@ -247,6 +389,12 @@ export default function TodayPage() {
           action: "start",
         });
 
+        try {
+          await saveActivityLabelIfMissing(cleaned);
+        } catch {
+          setErrorMessage("Activity started, but could not save the label as a quick chip.");
+        }
+
         setActivityLabelInput("");
         await loadActivities(user.uid);
       } catch (error) {
@@ -259,7 +407,7 @@ export default function TodayPage() {
         setIsStartingActivity(false);
       }
     },
-    [loadActivities, user]
+    [loadActivities, saveActivityLabelIfMissing, user]
   );
 
   const endOpenActivity = useCallback(
@@ -337,6 +485,101 @@ export default function TodayPage() {
   const handleActivitySubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await handleStartActivity(activityLabelInput);
+  };
+
+  const startEditingActivityEntry = (entry: ActivityEntry) => {
+    setErrorMessage(null);
+    setEditingActivityEntryId(entry.id);
+    setEditingActivityLabelInput(entry.label);
+    setEditingActivityTimestampInput(toDateTimeLocalInputValue(entry.timestamp));
+    setEditingActivityActionInput(entry.action);
+  };
+
+  const stopEditingActivityEntry = () => {
+    setEditingActivityEntryId(null);
+    setEditingActivityLabelInput("");
+    setEditingActivityTimestampInput("");
+    setEditingActivityActionInput("start");
+  };
+
+  const handleSaveActivityEntryChanges = async (entryId: string) => {
+    if (!user) {
+      return;
+    }
+
+    const cleanedLabel = editingActivityLabelInput.trim();
+
+    if (cleanedLabel.length === 0) {
+      setErrorMessage("Activity label cannot be empty.");
+      return;
+    }
+
+    const timestamp = parseDateTimeLocalInputValue(editingActivityTimestampInput);
+
+    if (!timestamp) {
+      setErrorMessage("Enter a valid activity timestamp.");
+      return;
+    }
+
+    setActiveMutationEntryId(entryId);
+    setErrorMessage(null);
+
+    try {
+      await updateActivityEntry({
+        userId: user.uid,
+        id: entryId,
+        label: cleanedLabel,
+        action: editingActivityActionInput,
+        timestamp,
+      });
+
+      stopEditingActivityEntry();
+      await loadActivities(user.uid);
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Could not update the activity entry. Please try again.");
+      }
+    } finally {
+      setActiveMutationEntryId(null);
+    }
+  };
+
+  const handleDeleteActivityEntry = async (entryId: string) => {
+    if (!user) {
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this activity entry?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActiveMutationEntryId(entryId);
+    setErrorMessage(null);
+
+    try {
+      await deleteActivityEntry({
+        userId: user.uid,
+        id: entryId,
+      });
+
+      if (editingActivityEntryId === entryId) {
+        stopEditingActivityEntry();
+      }
+
+      await loadActivities(user.uid);
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Could not delete the activity entry. Please try again.");
+      }
+    } finally {
+      setActiveMutationEntryId(null);
+    }
   };
 
   const startEditingEntry = (entry: EventEntry) => {
@@ -486,19 +729,23 @@ export default function TodayPage() {
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Quick activities</p>
-        <div className="flex flex-wrap gap-2">
-          {quickActivityLabels.map((label) => (
-            <button
-              key={label}
-              type="button"
-              className="ui-chip"
-              onClick={() => void handleStartActivity(label)}
-              disabled={isMutatingActivity}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {activityQuickLabels === null ? (
+          <p className="text-sm text-slate-600">Loading quick activities...</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {displayedActivityQuickLabels.map((label) => (
+              <button
+                key={label}
+                type="button"
+                className="ui-chip"
+                onClick={() => void handleStartActivity(label)}
+                disabled={isMutatingActivity}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="ui-card ui-section">
@@ -557,19 +804,23 @@ export default function TodayPage() {
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Quick events</p>
-        <div className="flex flex-wrap gap-2">
-          {quickEventLabels.map((label) => (
-            <button
-              key={label}
-              type="button"
-              className="ui-chip"
-              onClick={() => void handleLogEvent(label)}
-              disabled={isSubmitting}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {eventQuickLabels === null ? (
+          <p className="text-sm text-slate-600">Loading quick events...</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {displayedEventQuickLabels.map((label) => (
+              <button
+                key={label}
+                type="button"
+                className="ui-chip"
+                onClick={() => void handleLogEvent(label)}
+                disabled={isSubmitting}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {errorMessage ? (
@@ -595,41 +846,132 @@ export default function TodayPage() {
       </section>
 
       <section className="ui-card ui-section">
-        <p className="ui-section-title">Today event timeline</p>
-        {isLoadingEvents ? (
-          <p className="text-sm text-slate-600">Loading today events...</p>
-        ) : entries.length === 0 ? (
-          <p className="text-sm text-slate-600">No events in today timeline yet.</p>
+        <p className="ui-section-title">Today timeline</p>
+        {isLoadingActivities || isLoadingEvents ? (
+          <p className="text-sm text-slate-600">Loading today timeline...</p>
+        ) : todayTimeline.length === 0 ? (
+          <p className="text-sm text-slate-600">No entries in today timeline yet.</p>
         ) : (
           <ol className="space-y-2 text-sm text-slate-700">
-            {entries.map((entry) => {
-              const isEditing = editingEntryId === entry.id;
+            {todayTimeline.map((item) => {
+              if (item.kind === "event") {
+                const entry = item.entry;
+                const isEditing = editingEntryId === entry.id;
+                const isMutating = activeMutationEntryId === entry.id;
+
+                return (
+                  <li key={`event-${entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
+                    {isEditing ? (
+                      <form
+                        className="space-y-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void handleSaveEntryChanges(entry.id);
+                        }}
+                      >
+                        <input
+                          className="ui-input"
+                          value={editingLabelInput}
+                          onChange={(event) => setEditingLabelInput(event.target.value)}
+                          placeholder="Event label"
+                          disabled={isMutating}
+                        />
+                        <input
+                          className="ui-input"
+                          type="datetime-local"
+                          value={editingTimestampInput}
+                          onChange={(event) => setEditingTimestampInput(event.target.value)}
+                          disabled={isMutating}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            className="ui-button ui-button-primary h-9 flex-1 text-xs"
+                            disabled={isMutating}
+                          >
+                            {isMutating ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-button ui-button-ghost h-9 px-3 text-xs"
+                            onClick={stopEditingEntry}
+                            disabled={isMutating}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-slate-800">{entry.label}</span>
+                          <span className="text-slate-500">{formatEventTime(entry)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-700">Event</span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                              onClick={() => startEditingEntry(entry)}
+                              disabled={activeMutationEntryId !== null}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="ui-button ui-button-warning h-8 px-3 text-xs"
+                              onClick={() => void handleDeleteEntry(entry.id)}
+                              disabled={activeMutationEntryId !== null}
+                            >
+                              {isMutating ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              }
+
+              const entry = item.entry;
+              const isEditing = editingActivityEntryId === entry.id;
               const isMutating = activeMutationEntryId === entry.id;
+              const isActivityStart = item.kind === "activity-start";
 
               return (
-                <li key={entry.id} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
+                <li key={`activity-${entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
                   {isEditing ? (
                     <form
                       className="space-y-2"
                       onSubmit={(event) => {
                         event.preventDefault();
-                        void handleSaveEntryChanges(entry.id);
+                        void handleSaveActivityEntryChanges(entry.id);
                       }}
                     >
                       <input
                         className="ui-input"
-                        value={editingLabelInput}
-                        onChange={(event) => setEditingLabelInput(event.target.value)}
-                        placeholder="Event label"
+                        value={editingActivityLabelInput}
+                        onChange={(event) => setEditingActivityLabelInput(event.target.value)}
+                        placeholder="Activity label"
                         disabled={isMutating}
                       />
                       <input
                         className="ui-input"
                         type="datetime-local"
-                        value={editingTimestampInput}
-                        onChange={(event) => setEditingTimestampInput(event.target.value)}
+                        value={editingActivityTimestampInput}
+                        onChange={(event) => setEditingActivityTimestampInput(event.target.value)}
                         disabled={isMutating}
                       />
+                      <select
+                        className="ui-input"
+                        value={editingActivityActionInput}
+                        onChange={(event) => setEditingActivityActionInput(event.target.value as ActivityAction)}
+                        disabled={isMutating}
+                      >
+                        <option value="start">Start</option>
+                        <option value="end">End</option>
+                      </select>
                       <div className="flex gap-2">
                         <button
                           type="submit"
@@ -641,7 +983,7 @@ export default function TodayPage() {
                         <button
                           type="button"
                           className="ui-button ui-button-ghost h-9 px-3 text-xs"
-                          onClick={stopEditingEntry}
+                          onClick={stopEditingActivityEntry}
                           disabled={isMutating}
                         >
                           Cancel
@@ -652,25 +994,34 @@ export default function TodayPage() {
                     <>
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium text-slate-800">{entry.label}</span>
-                        <span className="text-slate-500">{formatEventTime(entry)}</span>
+                        <span className="text-slate-500">{formatActivityEntryTime(entry)}</span>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="ui-button ui-button-ghost h-8 px-3 text-xs"
-                          onClick={() => startEditingEntry(entry)}
-                          disabled={activeMutationEntryId !== null}
+                      <div className="flex items-center justify-between gap-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-medium ${
+                            isActivityStart ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                          }`}
                         >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="ui-button ui-button-warning h-8 px-3 text-xs"
-                          onClick={() => void handleDeleteEntry(entry.id)}
-                          disabled={activeMutationEntryId !== null}
-                        >
-                          {isMutating ? "Deleting..." : "Delete"}
-                        </button>
+                          {isActivityStart ? "Activity start" : "Activity end"}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                            onClick={() => startEditingActivityEntry(entry)}
+                            disabled={activeMutationEntryId !== null}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-button ui-button-warning h-8 px-3 text-xs"
+                            onClick={() => void handleDeleteActivityEntry(entry.id)}
+                            disabled={activeMutationEntryId !== null}
+                          >
+                            {isMutating ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
