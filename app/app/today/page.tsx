@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
+import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
 import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
 import { normalizeLabelName } from "@/lib/firestore/normalize-label";
@@ -31,6 +32,18 @@ function formatActivityStartTime(entry: ActivityEntry): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(entry.timestamp.toDate());
+}
+
+function formatDuration(totalDurationMs: number): string {
+  const totalMinutes = Math.floor(totalDurationMs / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+
+  return `${hours}h ${minutes}m`;
 }
 
 function toDateTimeLocalInputValue(timestamp: Timestamp): string {
@@ -142,6 +155,10 @@ export default function TodayPage() {
   }, [activityEntries]);
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
+
+  const todayActivityTotals = useMemo(() => {
+    return deriveDailyActivityTotals(activityEntries, new Date());
+  }, [activityEntries]);
 
   const groupedCounts = useMemo(() => {
     const counts = new Map<string, { label: string; count: number }>();
@@ -498,6 +515,24 @@ export default function TodayPage() {
                 <span className="text-slate-500">
                   Started {formatActivityStartTime(entry)}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="ui-card ui-section">
+        <p className="ui-section-title">Today activity totals</p>
+        {isLoadingActivities ? (
+          <p className="text-sm text-slate-600">Loading today activity totals...</p>
+        ) : todayActivityTotals.length === 0 ? (
+          <p className="text-sm text-slate-600">No completed activities yet today.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {todayActivityTotals.map((item) => (
+              <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                <span className="font-medium text-slate-800">{item.label}</span>
+                <span className="text-slate-600">{formatDuration(item.totalDurationMs)}</span>
               </li>
             ))}
           </ul>
