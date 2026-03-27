@@ -5,6 +5,7 @@ import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
 import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
+import { normalizeLabelName } from "@/lib/firestore/normalize-label";
 import {
   createActivityEntry,
   createEventEntry,
@@ -19,6 +20,13 @@ const quickActivityLabels = ["Work", "Walk dog", "Cooking"] as const;
 const quickEventLabels = ["Coffee", "Water", "Energy drink"] as const;
 
 function formatEventTime(entry: EventEntry): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(entry.timestamp.toDate());
+}
+
+function formatActivityStartTime(entry: ActivityEntry): string {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -61,6 +69,8 @@ export default function TodayPage() {
   const [activityLabelInput, setActivityLabelInput] = useState("");
   const [eventLabelInput, setEventLabelInput] = useState("");
   const [isStartingActivity, setIsStartingActivity] = useState(false);
+  const [isEndingActivity, setIsEndingActivity] = useState(false);
+  const [isSelectingOpenActivityToEnd, setIsSelectingOpenActivityToEnd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -110,6 +120,8 @@ export default function TodayPage() {
       setEntries([]);
       setActivityLabelInput("");
       setIsStartingActivity(false);
+      setIsEndingActivity(false);
+      setIsSelectingOpenActivityToEnd(false);
       setIsLoadingActivities(false);
       setIsLoadingEvents(false);
       setActiveMutationEntryId(null);
@@ -128,6 +140,8 @@ export default function TodayPage() {
 
     return deriveOpenActivities(activityEntries).filter((entry) => isOnLocalDay(entry.timestamp.toDate(), today));
   }, [activityEntries]);
+
+  const isMutatingActivity = isStartingActivity || isEndingActivity;
 
   const groupedCounts = useMemo(() => {
     const counts = new Map<string, { label: string; count: number }>();
@@ -206,6 +220,7 @@ export default function TodayPage() {
       }
 
       setIsStartingActivity(true);
+      setIsSelectingOpenActivityToEnd(false);
       setErrorMessage(null);
 
       try {
@@ -228,6 +243,73 @@ export default function TodayPage() {
       }
     },
     [loadActivities, user]
+  );
+
+  const endOpenActivity = useCallback(
+    async (entry: ActivityEntry) => {
+      if (!user) {
+        return;
+      }
+
+      setIsEndingActivity(true);
+      setErrorMessage(null);
+
+      try {
+        await createActivityEntry({
+          userId: user.uid,
+          label: entry.label,
+          action: "end",
+        });
+
+        setActivityLabelInput("");
+        setIsSelectingOpenActivityToEnd(false);
+        await loadActivities(user.uid);
+      } catch (error) {
+        if (error instanceof FirebaseError) {
+          setErrorMessage(error.message);
+        } else {
+          setErrorMessage("Could not end the activity. Please try again.");
+        }
+      } finally {
+        setIsEndingActivity(false);
+      }
+    },
+    [loadActivities, user]
+  );
+
+  const handleEndActivity = useCallback(
+    async (label: string) => {
+      if (!user) {
+        return;
+      }
+
+      const cleaned = label.trim();
+
+      if (cleaned.length === 0) {
+        if (openActivitiesToday.length === 0) {
+          setErrorMessage("No open activities are available to end.");
+          return;
+        }
+
+        setErrorMessage(null);
+        setIsSelectingOpenActivityToEnd(true);
+        return;
+      }
+
+      const normalizedLabel = normalizeLabelName(cleaned);
+      const matchingOpenActivity = openActivitiesToday.find(
+        (entry) => entry.normalizedLabel === normalizedLabel
+      );
+
+      if (!matchingOpenActivity) {
+        setErrorMessage(`No open activity found for "${cleaned}".`);
+        setIsSelectingOpenActivityToEnd(false);
+        return;
+      }
+
+      await endOpenActivity(matchingOpenActivity);
+    },
+    [endOpenActivity, openActivitiesToday, user]
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -335,19 +417,54 @@ export default function TodayPage() {
   return (
     <div className="space-y-4">
       <section className="ui-card ui-section">
-        <p className="ui-section-title">Start activity</p>
+        <p className="ui-section-title">Log activity</p>
         <form className="space-y-2" onSubmit={(event) => void handleActivitySubmit(event)}>
           <input
             className="ui-input"
             placeholder="Type an activity label"
             value={activityLabelInput}
-            onChange={(event) => setActivityLabelInput(event.target.value)}
-            disabled={isStartingActivity}
+            onChange={(event) => {
+              setActivityLabelInput(event.target.value);
+
+              if (event.target.value.trim().length > 0) {
+                setIsSelectingOpenActivityToEnd(false);
+              }
+            }}
+            disabled={isMutatingActivity}
           />
-          <button type="submit" className="ui-button ui-button-success w-full" disabled={isStartingActivity}>
-            {isStartingActivity ? "Starting activity..." : "Start activity"}
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="submit" className="ui-button ui-button-success w-full" disabled={isMutatingActivity}>
+              {isStartingActivity ? "Starting..." : "Start activity"}
+            </button>
+            <button
+              type="button"
+              className="ui-button ui-button-warning w-full"
+              onClick={() => void handleEndActivity(activityLabelInput)}
+              disabled={isMutatingActivity}
+            >
+              {isEndingActivity ? "Ending..." : "End activity"}
+            </button>
+          </div>
         </form>
+        {isSelectingOpenActivityToEnd ? (
+          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
+            <div className="space-y-2">
+              {openActivitiesToday.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="ui-button ui-button-ghost h-10 w-full justify-between px-3 text-left"
+                  onClick={() => void endOpenActivity(entry)}
+                  disabled={isEndingActivity}
+                >
+                  <span className="truncate">{entry.label}</span>
+                  <span className="text-xs text-slate-500">Started {formatActivityStartTime(entry)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="ui-card ui-section">
@@ -359,7 +476,7 @@ export default function TodayPage() {
               type="button"
               className="ui-chip"
               onClick={() => void handleStartActivity(label)}
-              disabled={isStartingActivity}
+              disabled={isMutatingActivity}
             >
               {label}
             </button>
@@ -379,7 +496,7 @@ export default function TodayPage() {
               <li key={entry.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                 <span className="font-medium text-slate-800">{entry.label}</span>
                 <span className="text-slate-500">
-                  Started {new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(entry.timestamp.toDate())}
+                  Started {formatActivityStartTime(entry)}
                 </span>
               </li>
             ))}
