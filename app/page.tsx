@@ -1,23 +1,26 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthUser } from "@/lib/firebase/auth";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { isLoading, user } = useAuthUser();
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    router.replace(user ? "/app/today" : "/signin");
+  }, [isLoading, router, user]);
+
   return (
     <main className="app-shell">
       <section className="app-frame justify-center p-5">
-        <div className="ui-card space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Awareday</p>
-          <h1 className="text-2xl font-semibold text-slate-900">Log your day in seconds.</h1>
-          <p className="text-sm text-slate-600">
-            Awareday is a mobile-first timestamp logger for activities and one-off events.
-          </p>
-          <div className="space-y-2">
-            <Link href="/app/today" className="ui-button ui-button-primary w-full">
-              Open today view
-            </Link>
-            <Link href="/app" className="ui-button ui-button-ghost w-full">
-              Preview app shell
-            </Link>
-          </div>
+        <div className="ui-card text-center">
+          <p className="text-sm text-slate-600">Loading Awareday...</p>
         </div>
       </section>
     </main>
