@@ -64,8 +64,8 @@ export async function listEventEntries(userId: string): Promise<EventEntry[]> {
   }));
 }
 
-export async function listTodayEventEntries(userId: string, now: Date = new Date()): Promise<EventEntry[]> {
-  const startOfDay = new Date(now);
+export async function listEventEntriesForDay(userId: string, day: Date): Promise<EventEntry[]> {
+  const startOfDay = new Date(day);
   startOfDay.setHours(0, 0, 0, 0);
 
   const startOfNextDay = new Date(startOfDay);
@@ -85,6 +85,10 @@ export async function listTodayEventEntries(userId: string, now: Date = new Date
     id: item.id,
     ...item.data(),
   }));
+}
+
+export async function listTodayEventEntries(userId: string, now: Date = new Date()): Promise<EventEntry[]> {
+  return listEventEntriesForDay(userId, now);
 }
 
 export async function updateEventEntry(input: UpdateEventEntryInput): Promise<void> {

@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
+import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
 import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
 import type { ActivityAction, ActivityEntry, EventEntry } from "@/lib/firestore/models";
@@ -297,29 +298,7 @@ export default function TodayPage() {
   }, [activityEntries]);
 
   const groupedCounts = useMemo(() => {
-    const counts = new Map<string, { label: string; count: number }>();
-
-    for (const entry of entries) {
-      const existing = counts.get(entry.normalizedLabel);
-
-      if (existing) {
-        existing.count += 1;
-        continue;
-      }
-
-      counts.set(entry.normalizedLabel, {
-        label: entry.label,
-        count: 1,
-      });
-    }
-
-    return Array.from(counts.values()).sort((a, b) => {
-      if (b.count !== a.count) {
-        return b.count - a.count;
-      }
-
-      return a.label.localeCompare(b.label);
-    });
+    return deriveDailyEventCounts(entries, new Date());
   }, [entries]);
 
   const handleLogEvent = useCallback(

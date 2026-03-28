@@ -7,6 +7,7 @@ import {
   query,
   Timestamp,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import type {
   ActivityAction,
@@ -62,6 +63,28 @@ export async function createActivityEntry(input: CreateActivityEntryInput): Prom
 export async function listActivityEntries(userId: string): Promise<ActivityEntry[]> {
   const collectionRef = activityEntriesCollectionRef(userId);
   const entriesQuery = query(collectionRef, orderBy("timestamp", "desc"));
+  const snapshot = await getDocs(entriesQuery);
+
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  }));
+}
+
+export async function listActivityEntriesForDay(userId: string, day: Date): Promise<ActivityEntry[]> {
+  const startOfDay = new Date(day);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const startOfNextDay = new Date(startOfDay);
+  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+
+  const collectionRef = activityEntriesCollectionRef(userId);
+  const entriesQuery = query(
+    collectionRef,
+    where("timestamp", ">=", Timestamp.fromDate(startOfDay)),
+    where("timestamp", "<", Timestamp.fromDate(startOfNextDay)),
+    orderBy("timestamp", "desc")
+  );
   const snapshot = await getDocs(entriesQuery);
 
   return snapshot.docs.map((item) => ({
