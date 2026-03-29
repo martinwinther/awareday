@@ -1,0 +1,36 @@
+import type { DailyActivityTotal } from "@/lib/firestore/derive-activity-totals";
+import { formatDuration } from "./summary-helpers";
+
+type ActivityTotalsListProps = {
+  totals: DailyActivityTotal[];
+  isLoading: boolean;
+  loadingText: string;
+  emptyText: string;
+};
+
+export function ActivityTotalsList({
+  totals,
+  isLoading,
+  loadingText,
+  emptyText,
+}: ActivityTotalsListProps) {
+  if (isLoading) {
+    return <p className="text-sm text-slate-600">{loadingText}</p>;
+  }
+
+  if (totals.length === 0) {
+    return <p className="text-sm text-slate-600">{emptyText}</p>;
+  }
+
+  return (
+    <ul className="space-y-2 text-sm">
+      {totals.map((item) => (
+        <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+          <span className="font-medium text-slate-800">{item.label}</span>
+          <span className="text-slate-600">{formatDuration(item.totalDurationMs)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+

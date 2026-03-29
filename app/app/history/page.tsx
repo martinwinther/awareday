@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
+import { ActivityTotalsList } from "../_components/activity-totals-list";
+import { EventCountsList } from "../_components/event-counts-list";
+import { SummarySection } from "../_components/summary-section";
+import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
-import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
 import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
-import {
-  listActivityEntriesForDay,
-  listEventEntriesForDay,
-} from "@/lib/firestore/repositories";
+import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
+import { listActivityEntriesForDay, listEventEntriesForDay } from "@/lib/firestore/repositories";
 import { useAuthUser } from "@/lib/firebase/auth";
 
 function getStartOfDay(day: Date): Date {
@@ -39,25 +40,6 @@ function formatSelectedDay(day: Date): string {
     day: "numeric",
     year: "numeric",
   }).format(day);
-}
-
-function formatTimelineTime(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatDuration(totalDurationMs: number): string {
-  const totalMinutes = Math.floor(totalDurationMs / (1000 * 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-
-  return `${hours}h ${minutes}m`;
 }
 
 export default function HistoryPage() {
@@ -137,8 +119,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4">
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">History</p>
+      <SummarySection title="History">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -157,86 +138,37 @@ export default function HistoryPage() {
             Next
           </button>
         </div>
-      </section>
+      </SummarySection>
 
       {errorMessage ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
       ) : null}
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Activity totals</p>
-        {isLoading ? (
-          <p className="text-sm text-slate-600">Loading activity totals...</p>
-        ) : activityTotals.length === 0 ? (
-          <p className="text-sm text-slate-600">No completed activities for this day.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {activityTotals.map((item) => (
-              <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="font-medium text-slate-800">{item.label}</span>
-                <span className="text-slate-600">{formatDuration(item.totalDurationMs)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <SummarySection title="Activity totals">
+        <ActivityTotalsList
+          totals={activityTotals}
+          isLoading={isLoading}
+          loadingText="Loading activity totals..."
+          emptyText="No completed activities for this day."
+        />
+      </SummarySection>
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Event counts</p>
-        {isLoading ? (
-          <p className="text-sm text-slate-600">Loading event counts...</p>
-        ) : eventCounts.length === 0 ? (
-          <p className="text-sm text-slate-600">No events logged for this day.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {eventCounts.map((item) => (
-              <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="font-medium text-slate-800">{item.label}</span>
-                <span className="text-slate-600">{item.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <SummarySection title="Event counts">
+        <EventCountsList
+          counts={eventCounts}
+          isLoading={isLoading}
+          loadingText="Loading event counts..."
+          emptyText="No events logged for this day."
+        />
+      </SummarySection>
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Daily timeline</p>
-        {isLoading ? (
-          <p className="text-sm text-slate-600">Loading timeline...</p>
-        ) : timelineItems.length === 0 ? (
-          <p className="text-sm text-slate-600">No entries in this day timeline.</p>
-        ) : (
-          <ol className="space-y-2 text-sm text-slate-700">
-            {timelineItems.map((item) => {
-              const isActivityStart = item.kind === "activity-start";
-              const isActivityEnd = item.kind === "activity-end";
-
-              return (
-                <li key={`${item.kind}-${item.entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-800">{item.entry.label}</span>
-                    <span className="text-slate-500">{formatTimelineTime(item.entry.timestamp.toDate())}</span>
-                  </div>
-                  <div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${
-                        isActivityStart
-                          ? "bg-emerald-100 text-emerald-700"
-                          : isActivityEnd
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-sky-100 text-sky-700"
-                      }`}
-                    >
-                      {isActivityStart ? "Activity start" : isActivityEnd ? "Activity end" : "Event"}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
+      <TimelineSection
+        title="Daily timeline"
+        items={timelineItems}
+        isLoading={isLoading}
+        loadingText="Loading timeline..."
+        emptyText="No entries in this day timeline."
+      />
     </div>
   );
 }
-

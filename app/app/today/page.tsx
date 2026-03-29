@@ -3,10 +3,15 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
+import { ActivityTotalsList } from "../_components/activity-totals-list";
+import { EventCountsList } from "../_components/event-counts-list";
+import { formatClockTime } from "../_components/summary-helpers";
+import { SummarySection } from "../_components/summary-section";
+import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
-import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
+import { deriveTodayTimeline, type TodayTimelineItem } from "@/lib/firestore/derive-today-timeline";
 import type { ActivityAction, ActivityEntry, EventEntry } from "@/lib/firestore/models";
 import { normalizeLabelName } from "@/lib/firestore/normalize-label";
 import {
@@ -28,37 +33,8 @@ import { useAuthUser } from "@/lib/firebase/auth";
 const fallbackQuickActivityLabels = ["Work", "Walk dog", "Cooking"] as const;
 const fallbackQuickEventLabels = ["Coffee", "Water", "Energy drink"] as const;
 
-function formatEventTime(entry: EventEntry): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(entry.timestamp.toDate());
-}
-
 function formatActivityStartTime(entry: ActivityEntry): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(entry.timestamp.toDate());
-}
-
-function formatActivityEntryTime(entry: ActivityEntry): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(entry.timestamp.toDate());
-}
-
-function formatDuration(totalDurationMs: number): string {
-  const totalMinutes = Math.floor(totalDurationMs / (1000 * 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-
-  return `${hours}h ${minutes}m`;
+  return formatClockTime(entry.timestamp.toDate());
 }
 
 function toDateTimeLocalInputValue(timestamp: Timestamp): string {
@@ -653,79 +629,284 @@ export default function TodayPage() {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Log activity</p>
-        <form className="space-y-2" onSubmit={(event) => void handleActivitySubmit(event)}>
+  function renderTimelineEditor(item: TodayTimelineItem) {
+      if (item.kind === "event") {
+        const entry = item.entry;
+        const isEditing = editingEntryId === entry.id;
+        const isMutating = activeMutationEntryId === entry.id;
+
+        if (!isEditing) {
+          return null;
+        }
+
+        return (
+          <form
+            className="space-y-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveEntryChanges(entry.id);
+            }}
+          >
+            <input
+              className="ui-input"
+              value={editingLabelInput}
+              onChange={(event) => setEditingLabelInput(event.target.value)}
+              placeholder="Event label"
+              disabled={isMutating}
+            />
+            <input
+              className="ui-input"
+              type="datetime-local"
+              value={editingTimestampInput}
+              onChange={(event) => setEditingTimestampInput(event.target.value)}
+              disabled={isMutating}
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+                {isMutating ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                className="ui-button ui-button-ghost h-9 px-3 text-xs"
+                onClick={stopEditingEntry}
+                disabled={isMutating}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        );
+      }
+
+      const entry = item.entry;
+      const isEditing = editingActivityEntryId === entry.id;
+      const isMutating = activeMutationEntryId === entry.id;
+
+      if (!isEditing) {
+        return null;
+      }
+
+    return (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSaveActivityEntryChanges(entry.id);
+          }}
+        >
           <input
             className="ui-input"
-            placeholder="Type an activity label"
-            value={activityLabelInput}
-            onChange={(event) => {
-              setActivityLabelInput(event.target.value);
-
-              if (event.target.value.trim().length > 0) {
-                setIsSelectingOpenActivityToEnd(false);
-              }
-            }}
-            disabled={isMutatingActivity}
+            value={editingActivityLabelInput}
+            onChange={(event) => setEditingActivityLabelInput(event.target.value)}
+            placeholder="Activity label"
+            disabled={isMutating}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <button type="submit" className="ui-button ui-button-success w-full" disabled={isMutatingActivity}>
-              {isStartingActivity ? "Starting..." : "Start activity"}
+          <input
+            className="ui-input"
+            type="datetime-local"
+            value={editingActivityTimestampInput}
+            onChange={(event) => setEditingActivityTimestampInput(event.target.value)}
+            disabled={isMutating}
+          />
+          <select
+            className="ui-input"
+            value={editingActivityActionInput}
+            onChange={(event) => setEditingActivityActionInput(event.target.value as ActivityAction)}
+            disabled={isMutating}
+          >
+            <option value="start">Start</option>
+            <option value="end">End</option>
+          </select>
+          <div className="flex gap-2">
+            <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+              {isMutating ? "Saving..." : "Save"}
             </button>
             <button
               type="button"
-              className="ui-button ui-button-warning w-full"
-              onClick={() => void handleEndActivity(activityLabelInput)}
-              disabled={isMutatingActivity}
+              className="ui-button ui-button-ghost h-9 px-3 text-xs"
+              onClick={stopEditingActivityEntry}
+              disabled={isMutating}
             >
-              {isEndingActivity ? "Ending..." : "End activity"}
+              Cancel
             </button>
           </div>
         </form>
-        {isSelectingOpenActivityToEnd ? (
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
-            <div className="space-y-2">
-              {openActivitiesToday.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className="ui-button ui-button-ghost h-10 w-full justify-between px-3 text-left"
-                  onClick={() => void endOpenActivity(entry)}
-                  disabled={isEndingActivity}
-                >
-                  <span className="truncate">{entry.label}</span>
-                  <span className="text-xs text-slate-500">Started {formatActivityStartTime(entry)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
+    );
+  }
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Quick activities</p>
-        {activityQuickLabels === null ? (
-          <p className="text-sm text-slate-600">Loading quick activities...</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {displayedActivityQuickLabels.map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="ui-chip"
-                onClick={() => void handleStartActivity(label)}
-                disabled={isMutatingActivity}
-              >
-                {label}
-              </button>
-            ))}
+  function renderTimelineActions(item: TodayTimelineItem) {
+      if (item.kind === "event") {
+        const entry = item.entry;
+        const isMutating = activeMutationEntryId === entry.id;
+
+        return (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="ui-button ui-button-ghost h-8 px-3 text-xs"
+              onClick={() => startEditingEntry(entry)}
+              disabled={activeMutationEntryId !== null}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="ui-button ui-button-warning h-8 px-3 text-xs"
+              onClick={() => void handleDeleteEntry(entry.id)}
+              disabled={activeMutationEntryId !== null}
+            >
+              {isMutating ? "Deleting..." : "Delete"}
+            </button>
           </div>
-        )}
-      </section>
+        );
+      }
+
+      const entry = item.entry;
+      const isMutating = activeMutationEntryId === entry.id;
+
+    return (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="ui-button ui-button-ghost h-8 px-3 text-xs"
+            onClick={() => startEditingActivityEntry(entry)}
+            disabled={activeMutationEntryId !== null}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="ui-button ui-button-warning h-8 px-3 text-xs"
+            onClick={() => void handleDeleteActivityEntry(entry.id)}
+            disabled={activeMutationEntryId !== null}
+          >
+            {isMutating ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      );
+  }
+
+  return (
+    <div className="space-y-4">
+      <SummarySection title="Quick log">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Activity</p>
+            <form className="space-y-2" onSubmit={(event) => void handleActivitySubmit(event)}>
+              <input
+                className="ui-input h-12 text-base"
+                placeholder="Type an activity label"
+                value={activityLabelInput}
+                onChange={(event) => {
+                  setActivityLabelInput(event.target.value);
+
+                  if (event.target.value.trim().length > 0) {
+                    setIsSelectingOpenActivityToEnd(false);
+                  }
+                }}
+                disabled={isMutatingActivity}
+                autoComplete="off"
+                enterKeyHint="go"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="submit"
+                  className="ui-button ui-button-success h-12 w-full touch-manipulation"
+                  disabled={isMutatingActivity}
+                >
+                  {isStartingActivity ? "Starting..." : "Start activity"}
+                </button>
+                <button
+                  type="button"
+                  className="ui-button ui-button-warning h-12 w-full touch-manipulation"
+                  onClick={() => void handleEndActivity(activityLabelInput)}
+                  disabled={isMutatingActivity}
+                >
+                  {isEndingActivity ? "Ending..." : "End activity"}
+                </button>
+              </div>
+            </form>
+
+            {activityQuickLabels === null ? (
+              <p className="text-sm text-slate-600">Loading quick activities...</p>
+            ) : (
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {displayedActivityQuickLabels.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="ui-chip h-10 shrink-0 px-4"
+                    onClick={() => void handleStartActivity(label)}
+                    disabled={isMutatingActivity}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {isSelectingOpenActivityToEnd ? (
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
+                <div className="space-y-2">
+                  {openActivitiesToday.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="ui-button ui-button-ghost h-11 w-full justify-between px-3 text-left"
+                      onClick={() => void endOpenActivity(entry)}
+                      disabled={isEndingActivity}
+                    >
+                      <span className="truncate">{entry.label}</span>
+                      <span className="text-xs text-slate-500">Started {formatActivityStartTime(entry)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="border-t border-slate-200 pt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Event</p>
+            <form className="mt-2 space-y-2" onSubmit={(event) => void handleSubmit(event)}>
+              <input
+                className="ui-input h-12 text-base"
+                placeholder="Type an event label"
+                value={eventLabelInput}
+                onChange={(event) => setEventLabelInput(event.target.value)}
+                disabled={isSubmitting}
+                autoComplete="off"
+                enterKeyHint="go"
+              />
+              <button
+                type="submit"
+                className="ui-button ui-button-primary h-12 w-full touch-manipulation"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Logging event..." : "Log event"}
+              </button>
+            </form>
+
+            {eventQuickLabels === null ? (
+              <p className="mt-2 text-sm text-slate-600">Loading quick events...</p>
+            ) : (
+              <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+                {displayedEventQuickLabels.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="ui-chip h-10 shrink-0 px-4"
+                    onClick={() => void handleLogEvent(label)}
+                    disabled={isSubmitting}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </SummarySection>
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Open activities</p>
@@ -738,278 +919,44 @@ export default function TodayPage() {
             {openActivitiesToday.map((entry) => (
               <li key={entry.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                 <span className="font-medium text-slate-800">{entry.label}</span>
-                <span className="text-slate-500">
-                  Started {formatActivityStartTime(entry)}
-                </span>
+                <span className="text-slate-500">Started {formatActivityStartTime(entry)}</span>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Today activity totals</p>
-        {isLoadingActivities ? (
-          <p className="text-sm text-slate-600">Loading today activity totals...</p>
-        ) : todayActivityTotals.length === 0 ? (
-          <p className="text-sm text-slate-600">No completed activities yet today.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {todayActivityTotals.map((item) => (
-              <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="font-medium text-slate-800">{item.label}</span>
-                <span className="text-slate-600">{formatDuration(item.totalDurationMs)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Log event</p>
-        <form className="space-y-2" onSubmit={(event) => void handleSubmit(event)}>
-          <input
-            className="ui-input"
-            placeholder="Type an event label"
-            value={eventLabelInput}
-            onChange={(event) => setEventLabelInput(event.target.value)}
-            disabled={isSubmitting}
-          />
-          <button type="submit" className="ui-button ui-button-primary w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Logging event..." : "Log event"}
-          </button>
-        </form>
-      </section>
-
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Quick events</p>
-        {eventQuickLabels === null ? (
-          <p className="text-sm text-slate-600">Loading quick events...</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {displayedEventQuickLabels.map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="ui-chip"
-                onClick={() => void handleLogEvent(label)}
-                disabled={isSubmitting}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+      <SummarySection title="Today activity totals">
+        <ActivityTotalsList
+          totals={todayActivityTotals}
+          isLoading={isLoadingActivities}
+          loadingText="Loading today activity totals..."
+          emptyText="No completed activities yet today."
+        />
+      </SummarySection>
 
       {errorMessage ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
       ) : null}
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Today event counts</p>
-        {isLoadingEvents ? (
-          <p className="text-sm text-slate-600">Loading today events...</p>
-        ) : groupedCounts.length === 0 ? (
-          <p className="text-sm text-slate-600">No events logged yet today.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {groupedCounts.map((item) => (
-              <li key={item.label} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="font-medium text-slate-800">{item.label}</span>
-                <span className="text-slate-600">{item.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <SummarySection title="Today event counts">
+        <EventCountsList
+          counts={groupedCounts}
+          isLoading={isLoadingEvents}
+          loadingText="Loading today events..."
+          emptyText="No events logged yet today."
+        />
+      </SummarySection>
 
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Today timeline</p>
-        {isLoadingActivities || isLoadingEvents ? (
-          <p className="text-sm text-slate-600">Loading today timeline...</p>
-        ) : todayTimeline.length === 0 ? (
-          <p className="text-sm text-slate-600">No entries in today timeline yet.</p>
-        ) : (
-          <ol className="space-y-2 text-sm text-slate-700">
-            {todayTimeline.map((item) => {
-              if (item.kind === "event") {
-                const entry = item.entry;
-                const isEditing = editingEntryId === entry.id;
-                const isMutating = activeMutationEntryId === entry.id;
-
-                return (
-                  <li key={`event-${entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
-                    {isEditing ? (
-                      <form
-                        className="space-y-2"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void handleSaveEntryChanges(entry.id);
-                        }}
-                      >
-                        <input
-                          className="ui-input"
-                          value={editingLabelInput}
-                          onChange={(event) => setEditingLabelInput(event.target.value)}
-                          placeholder="Event label"
-                          disabled={isMutating}
-                        />
-                        <input
-                          className="ui-input"
-                          type="datetime-local"
-                          value={editingTimestampInput}
-                          onChange={(event) => setEditingTimestampInput(event.target.value)}
-                          disabled={isMutating}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            className="ui-button ui-button-primary h-9 flex-1 text-xs"
-                            disabled={isMutating}
-                          >
-                            {isMutating ? "Saving..." : "Save"}
-                          </button>
-                          <button
-                            type="button"
-                            className="ui-button ui-button-ghost h-9 px-3 text-xs"
-                            onClick={stopEditingEntry}
-                            disabled={isMutating}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="font-medium text-slate-800">{entry.label}</span>
-                          <span className="text-slate-500">{formatEventTime(entry)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-700">Event</span>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              className="ui-button ui-button-ghost h-8 px-3 text-xs"
-                              onClick={() => startEditingEntry(entry)}
-                              disabled={activeMutationEntryId !== null}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="ui-button ui-button-warning h-8 px-3 text-xs"
-                              onClick={() => void handleDeleteEntry(entry.id)}
-                              disabled={activeMutationEntryId !== null}
-                            >
-                              {isMutating ? "Deleting..." : "Delete"}
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                );
-              }
-
-              const entry = item.entry;
-              const isEditing = editingActivityEntryId === entry.id;
-              const isMutating = activeMutationEntryId === entry.id;
-              const isActivityStart = item.kind === "activity-start";
-
-              return (
-                <li key={`activity-${entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
-                  {isEditing ? (
-                    <form
-                      className="space-y-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void handleSaveActivityEntryChanges(entry.id);
-                      }}
-                    >
-                      <input
-                        className="ui-input"
-                        value={editingActivityLabelInput}
-                        onChange={(event) => setEditingActivityLabelInput(event.target.value)}
-                        placeholder="Activity label"
-                        disabled={isMutating}
-                      />
-                      <input
-                        className="ui-input"
-                        type="datetime-local"
-                        value={editingActivityTimestampInput}
-                        onChange={(event) => setEditingActivityTimestampInput(event.target.value)}
-                        disabled={isMutating}
-                      />
-                      <select
-                        className="ui-input"
-                        value={editingActivityActionInput}
-                        onChange={(event) => setEditingActivityActionInput(event.target.value as ActivityAction)}
-                        disabled={isMutating}
-                      >
-                        <option value="start">Start</option>
-                        <option value="end">End</option>
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          type="submit"
-                          className="ui-button ui-button-primary h-9 flex-1 text-xs"
-                          disabled={isMutating}
-                        >
-                          {isMutating ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          className="ui-button ui-button-ghost h-9 px-3 text-xs"
-                          onClick={stopEditingActivityEntry}
-                          disabled={isMutating}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-medium text-slate-800">{entry.label}</span>
-                        <span className="text-slate-500">{formatActivityEntryTime(entry)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            isActivityStart ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {isActivityStart ? "Activity start" : "Activity end"}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="ui-button ui-button-ghost h-8 px-3 text-xs"
-                            onClick={() => startEditingActivityEntry(entry)}
-                            disabled={activeMutationEntryId !== null}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="ui-button ui-button-warning h-8 px-3 text-xs"
-                            onClick={() => void handleDeleteActivityEntry(entry.id)}
-                            disabled={activeMutationEntryId !== null}
-                          >
-                            {isMutating ? "Deleting..." : "Delete"}
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
+      <TimelineSection
+        title="Today timeline"
+        items={todayTimeline}
+        isLoading={isLoadingActivities || isLoadingEvents}
+        loadingText="Loading today timeline..."
+        emptyText="No entries in today timeline yet."
+        renderItemEditor={renderTimelineEditor}
+        renderItemActions={renderTimelineActions}
+      />
     </div>
   );
 }
