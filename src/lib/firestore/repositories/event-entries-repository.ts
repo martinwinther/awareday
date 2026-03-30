@@ -66,6 +66,7 @@ export async function listEventEntries(userId: string): Promise<EventEntry[]> {
 
 export async function listEventEntriesForDay(userId: string, day: Date): Promise<EventEntry[]> {
   const startOfDay = new Date(day);
+  const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
 
   const startOfNextDay = new Date(startOfDay);
@@ -85,13 +86,11 @@ export async function listEventEntriesForDay(userId: string, day: Date): Promise
     id: item.id,
     ...item.data(),
   }));
-}
-
+export async function updateEventEntry(input: UpdateEventEntryInput): Promise<void> {
 export async function listTodayEventEntries(userId: string, now: Date = new Date()): Promise<EventEntry[]> {
   return listEventEntriesForDay(userId, now);
 }
 
-export async function updateEventEntry(input: UpdateEventEntryInput): Promise<void> {
   const documentRef = doc(eventEntriesCollectionRef(input.userId), input.id);
   const updates: Partial<Omit<EventEntryDocument, "userId" | "createdAt">> = {
     updatedAt: Timestamp.now(),

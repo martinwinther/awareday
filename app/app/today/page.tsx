@@ -790,11 +790,16 @@ export default function TodayPage() {
     <div className="space-y-4">
       <SummarySection title="Quick log">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Activity</p>
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Activity</p>
+              <p className="text-xs text-slate-500">
+                {openActivitiesToday.length} open {openActivitiesToday.length === 1 ? "activity" : "activities"}
+              </p>
+            </div>
             <form className="space-y-2" onSubmit={(event) => void handleActivitySubmit(event)}>
               <input
-                className="ui-input h-12 text-base"
+                className="ui-input h-12 rounded-2xl px-4 text-base"
                 placeholder="Type an activity label"
                 value={activityLabelInput}
                 onChange={(event) => {
@@ -811,14 +816,14 @@ export default function TodayPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="submit"
-                  className="ui-button ui-button-success h-12 w-full touch-manipulation"
+                  className="ui-button ui-button-success h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
                   disabled={isMutatingActivity}
                 >
                   {isStartingActivity ? "Starting..." : "Start activity"}
                 </button>
                 <button
                   type="button"
-                  className="ui-button ui-button-warning h-12 w-full touch-manipulation"
+                  className="ui-button ui-button-warning h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
                   onClick={() => void handleEndActivity(activityLabelInput)}
                   disabled={isMutatingActivity}
                 >
@@ -830,30 +835,43 @@ export default function TodayPage() {
             {activityQuickLabels === null ? (
               <p className="text-sm text-slate-600">Loading quick activities...</p>
             ) : (
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Quick start</p>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 {displayedActivityQuickLabels.map((label) => (
                   <button
                     key={label}
                     type="button"
-                    className="ui-chip h-10 shrink-0 px-4"
+                    className="ui-chip h-11 shrink-0 px-4 touch-manipulation active:scale-[0.99]"
                     onClick={() => void handleStartActivity(label)}
                     disabled={isMutatingActivity}
                   >
                     {label}
                   </button>
                 ))}
+                </div>
               </div>
             )}
 
             {isSelectingOpenActivityToEnd ? (
               <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
+                  <button
+                    type="button"
+                    className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                    onClick={() => setIsSelectingOpenActivityToEnd(false)}
+                    disabled={isEndingActivity}
+                  >
+                    Cancel
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {openActivitiesToday.map((entry) => (
                     <button
                       key={entry.id}
                       type="button"
-                      className="ui-button ui-button-ghost h-11 w-full justify-between px-3 text-left"
+                      className="ui-button ui-button-ghost h-12 w-full justify-between rounded-2xl px-3 text-left touch-manipulation active:scale-[0.99]"
                       onClick={() => void endOpenActivity(entry)}
                       disabled={isEndingActivity}
                     >
@@ -866,11 +884,11 @@ export default function TodayPage() {
             ) : null}
           </div>
 
-          <div className="border-t border-slate-200 pt-4">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Event</p>
-            <form className="mt-2 space-y-2" onSubmit={(event) => void handleSubmit(event)}>
+            <form className="space-y-2" onSubmit={(event) => void handleSubmit(event)}>
               <input
-                className="ui-input h-12 text-base"
+                className="ui-input h-12 rounded-2xl px-4 text-base"
                 placeholder="Type an event label"
                 value={eventLabelInput}
                 onChange={(event) => setEventLabelInput(event.target.value)}
@@ -880,7 +898,7 @@ export default function TodayPage() {
               />
               <button
                 type="submit"
-                className="ui-button ui-button-primary h-12 w-full touch-manipulation"
+                className="ui-button ui-button-primary h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Logging event..." : "Log event"}
@@ -888,25 +906,32 @@ export default function TodayPage() {
             </form>
 
             {eventQuickLabels === null ? (
-              <p className="mt-2 text-sm text-slate-600">Loading quick events...</p>
+              <p className="text-sm text-slate-600">Loading quick events...</p>
             ) : (
-              <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
-                {displayedEventQuickLabels.map((label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className="ui-chip h-10 shrink-0 px-4"
-                    onClick={() => void handleLogEvent(label)}
-                    disabled={isSubmitting}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Quick event</p>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {displayedEventQuickLabels.map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      className="ui-chip h-11 shrink-0 px-4 touch-manipulation active:scale-[0.99]"
+                      onClick={() => void handleLogEvent(label)}
+                      disabled={isSubmitting}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
       </SummarySection>
+
+      {errorMessage ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
+      ) : null}
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Open activities</p>
@@ -935,9 +960,6 @@ export default function TodayPage() {
         />
       </SummarySection>
 
-      {errorMessage ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
-      ) : null}
 
       <SummarySection title="Today event counts">
         <EventCountsList

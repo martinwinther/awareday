@@ -62,8 +62,8 @@ export async function createActivityEntry(input: CreateActivityEntryInput): Prom
 
 export async function listActivityEntries(userId: string): Promise<ActivityEntry[]> {
   const collectionRef = activityEntriesCollectionRef(userId);
-  const entriesQuery = query(collectionRef, orderBy("timestamp", "desc"));
-  const snapshot = await getDocs(entriesQuery);
+
+  return snapshot.docs.map((item) => ({
 
   return snapshot.docs.map((item) => ({
     id: item.id,
@@ -86,8 +86,6 @@ export async function listActivityEntriesForDay(userId: string, day: Date): Prom
     orderBy("timestamp", "desc")
   );
   const snapshot = await getDocs(entriesQuery);
-
-  return snapshot.docs.map((item) => ({
     id: item.id,
     ...item.data(),
   }));
