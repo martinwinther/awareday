@@ -6,6 +6,7 @@ import { Timestamp } from "firebase/firestore";
 import { ActivityTotalsList } from "../_components/activity-totals-list";
 import { EventCountsList } from "../_components/event-counts-list";
 import { formatClockTime } from "../_components/summary-helpers";
+import { StateNotice } from "../_components/state-notice";
 import { SummarySection } from "../_components/summary-section";
 import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
@@ -833,7 +834,11 @@ export default function TodayPage() {
             </form>
 
             {activityQuickLabels === null ? (
-              <p className="text-sm text-slate-600">Loading quick activities...</p>
+              <StateNotice
+                variant="loading"
+                title="Loading quick activity labels..."
+                description="Your saved labels will appear here."
+              />
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">Quick start</p>
@@ -906,7 +911,11 @@ export default function TodayPage() {
             </form>
 
             {eventQuickLabels === null ? (
-              <p className="text-sm text-slate-600">Loading quick events...</p>
+              <StateNotice
+                variant="loading"
+                title="Loading quick event labels..."
+                description="Your saved labels will appear here."
+              />
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">Quick event</p>
@@ -929,16 +938,18 @@ export default function TodayPage() {
         </div>
       </SummarySection>
 
-      {errorMessage ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
-      ) : null}
+      {errorMessage ? <StateNotice variant="error" title="Something went wrong." description={errorMessage} /> : null}
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Open activities</p>
         {isLoadingActivities ? (
-          <p className="text-sm text-slate-600">Loading open activities...</p>
+          <StateNotice variant="loading" title="Loading open activities..." />
         ) : openActivitiesToday.length === 0 ? (
-          <p className="text-sm text-slate-600">No open activities started today.</p>
+          <StateNotice
+            variant="empty"
+            title="No open activities started today."
+            description="Start an activity in Quick log to see it here until you end it."
+          />
         ) : (
           <ul className="space-y-2 text-sm text-slate-700">
             {openActivitiesToday.map((entry) => (
@@ -956,7 +967,7 @@ export default function TodayPage() {
           totals={todayActivityTotals}
           isLoading={isLoadingActivities}
           loadingText="Loading today activity totals..."
-          emptyText="No completed activities yet today."
+          emptyText="No completed activity totals yet today."
         />
       </SummarySection>
 
@@ -965,7 +976,7 @@ export default function TodayPage() {
         <EventCountsList
           counts={groupedCounts}
           isLoading={isLoadingEvents}
-          loadingText="Loading today events..."
+          loadingText="Loading today event counts..."
           emptyText="No events logged yet today."
         />
       </SummarySection>

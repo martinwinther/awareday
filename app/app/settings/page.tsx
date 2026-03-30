@@ -14,6 +14,7 @@ import {
   updateActivityLabel,
   updateEventLabel,
 } from "@/lib/firestore/repositories";
+import { StateNotice } from "../_components/state-notice";
 import { useAuthUser } from "@/lib/firebase/auth";
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -28,8 +29,8 @@ export default function SettingsPage() {
   const { user } = useAuthUser();
   const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [eventLabels, setEventLabels] = useState<EventLabel[]>([]);
-  const [isLoadingActivityLabels, setIsLoadingActivityLabels] = useState(false);
-  const [isLoadingEventLabels, setIsLoadingEventLabels] = useState(false);
+  const [isLoadingActivityLabels, setIsLoadingActivityLabels] = useState(true);
+  const [isLoadingEventLabels, setIsLoadingEventLabels] = useState(true);
   const [activeMutationKey, setActiveMutationKey] = useState<string | null>(null);
   const [activityLabelInput, setActivityLabelInput] = useState("");
   const [eventLabelInput, setEventLabelInput] = useState("");
@@ -71,6 +72,8 @@ export default function SettingsPage() {
     if (!user) {
       setActivityLabels([]);
       setEventLabels([]);
+      setIsLoadingActivityLabels(false);
+      setIsLoadingEventLabels(false);
       setActivityLabelInput("");
       setEventLabelInput("");
       setEditingActivityLabelId(null);
@@ -341,9 +344,13 @@ export default function SettingsPage() {
         </form>
 
         {isLoadingActivityLabels ? (
-          <p className="text-sm text-slate-600">Loading activity labels...</p>
+          <StateNotice variant="loading" title="Loading activity labels..." />
         ) : activityLabels.length === 0 ? (
-          <p className="text-sm text-slate-600">No saved activity labels yet.</p>
+          <StateNotice
+            variant="empty"
+            title="No saved activity labels yet."
+            description="Add your frequent activities to speed up logging on Today."
+          />
         ) : (
           <ul className="space-y-2">
             {activityLabels.map((label) => {
@@ -427,9 +434,13 @@ export default function SettingsPage() {
         </form>
 
         {isLoadingEventLabels ? (
-          <p className="text-sm text-slate-600">Loading event labels...</p>
+          <StateNotice variant="loading" title="Loading event labels..." />
         ) : eventLabels.length === 0 ? (
-          <p className="text-sm text-slate-600">No saved event labels yet.</p>
+          <StateNotice
+            variant="empty"
+            title="No saved event labels yet."
+            description="Add common events to create quick one-tap chips on Today."
+          />
         ) : (
           <ul className="space-y-2">
             {eventLabels.map((label) => {
@@ -497,9 +508,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {errorMessage ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
-      ) : null}
+      {errorMessage ? <StateNotice variant="error" title="Could not update labels." description={errorMessage} /> : null}
     </div>
   );
 }

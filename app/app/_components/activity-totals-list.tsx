@@ -1,5 +1,6 @@
 import type { DailyActivityTotal } from "@/lib/firestore/derive-activity-totals";
 import { formatDuration } from "./summary-helpers";
+import { StateNotice } from "./state-notice";
 
 type ActivityTotalsListProps = {
   totals: DailyActivityTotal[];
@@ -15,11 +16,11 @@ export function ActivityTotalsList({
   emptyText,
 }: ActivityTotalsListProps) {
   if (isLoading) {
-    return <p className="text-sm text-slate-600">{loadingText}</p>;
+    return <StateNotice variant="loading" title={loadingText} />;
   }
 
   if (totals.length === 0) {
-    return <p className="text-sm text-slate-600">{emptyText}</p>;
+    return <StateNotice variant="empty" title={emptyText} />;
   }
 
   return (

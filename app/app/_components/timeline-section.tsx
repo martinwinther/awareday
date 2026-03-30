@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { TodayTimelineItem } from "@/lib/firestore/derive-today-timeline";
 import { formatClockTime } from "./summary-helpers";
 import { SummarySection } from "./summary-section";
+import { StateNotice } from "./state-notice";
 
 type TimelineSectionProps = {
   title: string;
@@ -51,9 +52,9 @@ export function TimelineSection({
   return (
     <SummarySection title={title}>
       {isLoading ? (
-        <p className="text-sm text-slate-600">{loadingText}</p>
+        <StateNotice variant="loading" title={loadingText} />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">{emptyText}</p>
+        <StateNotice variant="empty" title={emptyText} />
       ) : (
         <ol className="space-y-2 text-sm text-slate-700">
           {items.map((item) => {

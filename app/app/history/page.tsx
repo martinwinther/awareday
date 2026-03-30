@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { ActivityTotalsList } from "../_components/activity-totals-list";
 import { EventCountsList } from "../_components/event-counts-list";
+import { StateNotice } from "../_components/state-notice";
 import { SummarySection } from "../_components/summary-section";
 import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
@@ -51,6 +52,7 @@ export default function HistoryPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSelectedDayToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
+  const formattedSelectedDay = useMemo(() => formatSelectedDay(selectedDay), [selectedDay]);
 
   useEffect(() => {
     if (!user) {
@@ -128,7 +130,7 @@ export default function HistoryPage() {
           >
             Previous
           </button>
-          <p className="text-sm font-medium text-slate-800">{formatSelectedDay(selectedDay)}</p>
+          <p className="text-sm font-medium text-slate-800">{formattedSelectedDay}</p>
           <button
             type="button"
             className="ui-button ui-button-ghost h-10 px-3"
@@ -140,16 +142,14 @@ export default function HistoryPage() {
         </div>
       </SummarySection>
 
-      {errorMessage ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p>
-      ) : null}
+      {errorMessage ? <StateNotice variant="error" title="Could not load this day." description={errorMessage} /> : null}
 
       <SummarySection title="Activity totals">
         <ActivityTotalsList
           totals={activityTotals}
           isLoading={isLoading}
-          loadingText="Loading activity totals..."
-          emptyText="No completed activities for this day."
+          loadingText={`Loading activity totals for ${formattedSelectedDay}...`}
+          emptyText={`No completed activities logged on ${formattedSelectedDay}.`}
         />
       </SummarySection>
 
@@ -157,8 +157,8 @@ export default function HistoryPage() {
         <EventCountsList
           counts={eventCounts}
           isLoading={isLoading}
-          loadingText="Loading event counts..."
-          emptyText="No events logged for this day."
+          loadingText={`Loading event counts for ${formattedSelectedDay}...`}
+          emptyText={`No events logged on ${formattedSelectedDay}.`}
         />
       </SummarySection>
 
@@ -166,8 +166,8 @@ export default function HistoryPage() {
         title="Daily timeline"
         items={timelineItems}
         isLoading={isLoading}
-        loadingText="Loading timeline..."
-        emptyText="No entries in this day timeline."
+        loadingText={`Loading timeline for ${formattedSelectedDay}...`}
+        emptyText={`No history entries found for ${formattedSelectedDay}.`}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import type { DailyEventCount } from "@/lib/firestore/derive-daily-event-counts";
+import { StateNotice } from "./state-notice";
 
 type EventCountsListProps = {
   counts: DailyEventCount[];
@@ -9,11 +10,11 @@ type EventCountsListProps = {
 
 export function EventCountsList({ counts, isLoading, loadingText, emptyText }: EventCountsListProps) {
   if (isLoading) {
-    return <p className="text-sm text-slate-600">{loadingText}</p>;
+    return <StateNotice variant="loading" title={loadingText} />;
   }
 
   if (counts.length === 0) {
-    return <p className="text-sm text-slate-600">{emptyText}</p>;
+    return <StateNotice variant="empty" title={emptyText} />;
   }
 
   return (
