@@ -6,6 +6,8 @@ import { Timestamp } from "firebase/firestore";
 import { DailyFeedbackSections } from "../_components/daily-feedback-sections";
 import { formatClockTime } from "../_components/summary-helpers";
 import { StateNotice } from "../_components/state-notice";
+import { SuccessToast } from "../_components/success-toast";
+import { CollapsibleSection } from "../_components/collapsible-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
@@ -87,6 +89,8 @@ export default function TodayPage() {
   const [editingActivityTimestampInput, setEditingActivityTimestampInput] = useState("");
   const [editingActivityActionInput, setEditingActivityActionInput] = useState<ActivityAction>("start");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loadEvents = useCallback(async (userId: string) => {
     setIsLoadingEvents(true);
@@ -304,6 +308,8 @@ export default function TodayPage() {
         }
 
         setEventLabelInput("");
+        setSuccessMessage(`✓ Logged: ${cleaned}`);
+        setShowSuccessToast(true);
         await loadEvents(user.uid);
       } catch (error) {
         if (error instanceof FirebaseError) {
@@ -349,6 +355,8 @@ export default function TodayPage() {
         }
 
         setActivityLabelInput("");
+        setSuccessMessage(`▶ Started: ${cleaned}`);
+        setShowSuccessToast(true);
         await loadActivities(user.uid);
       } catch (error) {
         if (error instanceof FirebaseError) {
@@ -381,6 +389,8 @@ export default function TodayPage() {
 
         setActivityLabelInput("");
         setIsSelectingOpenActivityToEnd(false);
+        setSuccessMessage(`⊗ Ended: ${entry.label}`);
+        setShowSuccessToast(true);
         await loadActivities(user.uid);
       } catch (error) {
         if (error instanceof FirebaseError) {
@@ -786,6 +796,7 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-5">
+      <SuccessToast show={showSuccessToast} message={successMessage} />
       <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#f3dab2] via-[#f6e4c8] to-[#f0d6b0] p-4 shadow-[0_28px_48px_-36px_rgba(76,55,40,0.95)]">
         <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
         <div className="relative space-y-4">
@@ -832,16 +843,20 @@ export default function TodayPage() {
                     type="submit"
                     className="ui-button ui-button-success h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_20px_-18px_rgba(146,103,47,0.9)] active:translate-y-[0.5px]"
                     disabled={isMutatingActivity}
+                    title="Start a new activity"
                   >
-                    {isStartingActivity ? "Starting..." : "Start activity"}
+                    <span className="text-lg">▶</span>
+                    <span>{isStartingActivity ? "Starting..." : "Start"}</span>
                   </button>
                   <button
                     type="button"
                     className="ui-button ui-button-warning h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_20px_-18px_rgba(180,83,9,0.9)] active:translate-y-[0.5px]"
                     onClick={() => void handleEndActivity(activityLabelInput)}
                     disabled={isMutatingActivity}
+                    title="End an activity"
                   >
-                    {isEndingActivity ? "Ending..." : "End activity"}
+                    <span className="text-lg">⊗</span>
+                    <span>{isEndingActivity ? "Ending..." : "End"}</span>
                   </button>
                 </div>
               </form>
@@ -920,8 +935,10 @@ export default function TodayPage() {
                   type="submit"
                   className="ui-button ui-button-primary h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_22px_-18px_rgba(120,69,20,0.9)] active:translate-y-[0.5px]"
                   disabled={isSubmitting}
+                  title="Log an event"
                 >
-                  {isSubmitting ? "Logging event..." : "Log event"}
+                  <span className="text-lg">✓</span>
+                  <span>{isSubmitting ? "Logging..." : "Log event"}</span>
                 </button>
               </form>
 
@@ -960,12 +977,12 @@ export default function TodayPage() {
           <p className="text-xs font-medium text-stone-600">{openActivitiesToday.length} active</p>
         </div>
         {isLoadingActivities ? (
-          <StateNotice variant="loading" title="Loading open activities..." />
+          <StateNotice variant="loading" title="Loading your open activities..." />
         ) : openActivitiesToday.length === 0 ? (
           <StateNotice
             variant="empty"
-            title="No open activities started today."
-            description="Start an activity in Quick log to see it here until you end it."
+            title="All caught up!"
+            description="Start an activity in Quick log to see it here."
           />
         ) : (
           <ul className="space-y-2 text-sm text-stone-700">
@@ -982,40 +999,42 @@ export default function TodayPage() {
         )}
       </section>
 
-      <DailyFeedbackSections
-        activityTotals={todayActivityTotals}
-        eventCounts={groupedCounts}
-        timelineItems={todayTimeline}
-        isLoadingActivityTotals={isLoadingActivities}
-        isLoadingEventCounts={isLoadingEvents}
-        isLoadingTimeline={isLoadingActivities || isLoadingEvents}
-        activitySectionTone="soft"
-        eventSectionTone="soft"
-        timelineSectionTone="default"
-        activitySection={{
-          title: "Today activity totals",
-          loadingText: "Loading today activity totals...",
-          loadingDescription: "Calculating completed time from your start and end entries.",
-          emptyText: "No completed activity totals yet today.",
-          emptyDescription: "Start and end an activity to see duration totals here.",
-        }}
-        eventSection={{
-          title: "Today event counts",
-          loadingText: "Loading today event counts...",
-          loadingDescription: "Grouping your logged events for today.",
-          emptyText: "No events logged yet today.",
-          emptyDescription: "Log an event in Quick log to see counts appear.",
-        }}
-        timelineSection={{
-          title: "Today timeline",
-          loadingText: "Loading today timeline...",
-          loadingDescription: "Bringing together activity and event entries in time order.",
-          emptyText: "No entries in today timeline yet.",
-          emptyDescription: "Your activity starts, ends, and events will appear here.",
-        }}
-        renderTimelineEditor={renderTimelineEditor}
-        renderTimelineActions={renderTimelineActions}
-      />
+      <CollapsibleSection title="Today's Summary" defaultOpen={false}>
+        <DailyFeedbackSections
+          activityTotals={todayActivityTotals}
+          eventCounts={groupedCounts}
+          timelineItems={todayTimeline}
+          isLoadingActivityTotals={isLoadingActivities}
+          isLoadingEventCounts={isLoadingEvents}
+          isLoadingTimeline={isLoadingActivities || isLoadingEvents}
+          activitySectionTone="soft"
+          eventSectionTone="soft"
+          timelineSectionTone="default"
+          activitySection={{
+            title: "Activity totals",
+            loadingText: "Loading today activity totals...",
+            loadingDescription: "Calculating completed time from your start and end entries.",
+            emptyText: "No completed activity totals yet today.",
+            emptyDescription: "Start and end an activity to see duration totals here.",
+          }}
+          eventSection={{
+            title: "Event counts",
+            loadingText: "Loading today event counts...",
+            loadingDescription: "Grouping your logged events for today.",
+            emptyText: "No events logged yet today.",
+            emptyDescription: "Log an event in Quick log to see counts appear.",
+          }}
+          timelineSection={{
+            title: "Activity log",
+            loadingText: "Loading your activity log...",
+            loadingDescription: "Bringing together activity and event entries in time order.",
+            emptyText: "No entries in your activity log yet.",
+            emptyDescription: "Your activity starts, ends, and events will appear here.",
+          }}
+          renderTimelineEditor={renderTimelineEditor}
+          renderTimelineActions={renderTimelineActions}
+        />
+      </CollapsibleSection>
     </div>
   );
 }
