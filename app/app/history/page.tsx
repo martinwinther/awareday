@@ -2,11 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
-import { ActivityTotalsList } from "../_components/activity-totals-list";
-import { EventCountsList } from "../_components/event-counts-list";
+import { DailyFeedbackSections } from "../_components/daily-feedback-sections";
 import { StateNotice } from "../_components/state-notice";
 import { SummarySection } from "../_components/summary-section";
-import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
@@ -150,36 +148,34 @@ export default function HistoryPage() {
         />
       ) : null}
 
-      <SummarySection title="Activity totals">
-        <ActivityTotalsList
-          totals={activityTotals}
-          isLoading={isLoading}
-          loadingText={`Loading activity totals for ${formattedSelectedDay}...`}
-          loadingDescription="Calculating completed duration from activity start and end entries."
-          emptyText={`No completed activities logged on ${formattedSelectedDay}.`}
-          emptyDescription="This day has no matched start/end activity pairs yet."
-        />
-      </SummarySection>
-
-      <SummarySection title="Event counts">
-        <EventCountsList
-          counts={eventCounts}
-          isLoading={isLoading}
-          loadingText={`Loading event counts for ${formattedSelectedDay}...`}
-          loadingDescription="Counting timestamped events for the selected day."
-          emptyText={`No events logged on ${formattedSelectedDay}.`}
-          emptyDescription="Log one-off events on that day to see totals here."
-        />
-      </SummarySection>
-
-      <TimelineSection
-        title="Daily timeline"
-        items={timelineItems}
-        isLoading={isLoading}
-        loadingText={`Loading timeline for ${formattedSelectedDay}...`}
-        loadingDescription="Merging activity and event entries in chronological order."
-        emptyText={`No history entries found for ${formattedSelectedDay}.`}
-        emptyDescription="Try another day, or log activity and events to build history."
+      <DailyFeedbackSections
+        activityTotals={activityTotals}
+        eventCounts={eventCounts}
+        timelineItems={timelineItems}
+        isLoadingActivityTotals={isLoading}
+        isLoadingEventCounts={isLoading}
+        isLoadingTimeline={isLoading}
+        activitySection={{
+          title: "Activity totals",
+          loadingText: `Loading activity totals for ${formattedSelectedDay}...`,
+          loadingDescription: "Calculating completed duration from activity start and end entries.",
+          emptyText: `No completed activities logged on ${formattedSelectedDay}.`,
+          emptyDescription: "This day has no matched start/end activity pairs yet.",
+        }}
+        eventSection={{
+          title: "Event counts",
+          loadingText: `Loading event counts for ${formattedSelectedDay}...`,
+          loadingDescription: "Counting timestamped events for the selected day.",
+          emptyText: `No events logged on ${formattedSelectedDay}.`,
+          emptyDescription: "Log one-off events on that day to see totals here.",
+        }}
+        timelineSection={{
+          title: "Daily timeline",
+          loadingText: `Loading timeline for ${formattedSelectedDay}...`,
+          loadingDescription: "Merging activity and event entries in chronological order.",
+          emptyText: `No history entries found for ${formattedSelectedDay}.`,
+          emptyDescription: "Try another day, or log activity and events to build history.",
+        }}
       />
     </div>
   );

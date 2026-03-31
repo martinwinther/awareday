@@ -3,12 +3,10 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
-import { ActivityTotalsList } from "../_components/activity-totals-list";
-import { EventCountsList } from "../_components/event-counts-list";
+import { DailyFeedbackSections } from "../_components/daily-feedback-sections";
 import { formatClockTime } from "../_components/summary-helpers";
 import { StateNotice } from "../_components/state-notice";
 import { SummarySection } from "../_components/summary-section";
-import { TimelineSection } from "../_components/timeline-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
@@ -968,39 +966,36 @@ export default function TodayPage() {
         )}
       </section>
 
-      <SummarySection title="Today activity totals">
-        <ActivityTotalsList
-          totals={todayActivityTotals}
-          isLoading={isLoadingActivities}
-          loadingText="Loading today activity totals..."
-          loadingDescription="Calculating completed time from your start and end entries."
-          emptyText="No completed activity totals yet today."
-          emptyDescription="Start and end an activity to see duration totals here."
-        />
-      </SummarySection>
-
-
-      <SummarySection title="Today event counts">
-        <EventCountsList
-          counts={groupedCounts}
-          isLoading={isLoadingEvents}
-          loadingText="Loading today event counts..."
-          loadingDescription="Grouping your logged events for today."
-          emptyText="No events logged yet today."
-          emptyDescription="Log an event in Quick log to see counts appear."
-        />
-      </SummarySection>
-
-      <TimelineSection
-        title="Today timeline"
-        items={todayTimeline}
-        isLoading={isLoadingActivities || isLoadingEvents}
-        loadingText="Loading today timeline..."
-        loadingDescription="Bringing together activity and event entries in time order."
-        emptyText="No entries in today timeline yet."
-        emptyDescription="Your activity starts, ends, and events will appear here."
-        renderItemEditor={renderTimelineEditor}
-        renderItemActions={renderTimelineActions}
+      <DailyFeedbackSections
+        activityTotals={todayActivityTotals}
+        eventCounts={groupedCounts}
+        timelineItems={todayTimeline}
+        isLoadingActivityTotals={isLoadingActivities}
+        isLoadingEventCounts={isLoadingEvents}
+        isLoadingTimeline={isLoadingActivities || isLoadingEvents}
+        activitySection={{
+          title: "Today activity totals",
+          loadingText: "Loading today activity totals...",
+          loadingDescription: "Calculating completed time from your start and end entries.",
+          emptyText: "No completed activity totals yet today.",
+          emptyDescription: "Start and end an activity to see duration totals here.",
+        }}
+        eventSection={{
+          title: "Today event counts",
+          loadingText: "Loading today event counts...",
+          loadingDescription: "Grouping your logged events for today.",
+          emptyText: "No events logged yet today.",
+          emptyDescription: "Log an event in Quick log to see counts appear.",
+        }}
+        timelineSection={{
+          title: "Today timeline",
+          loadingText: "Loading today timeline...",
+          loadingDescription: "Bringing together activity and event entries in time order.",
+          emptyText: "No entries in today timeline yet.",
+          emptyDescription: "Your activity starts, ends, and events will appear here.",
+        }}
+        renderTimelineEditor={renderTimelineEditor}
+        renderTimelineActions={renderTimelineActions}
       />
     </div>
   );
