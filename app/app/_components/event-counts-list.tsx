@@ -5,16 +5,25 @@ type EventCountsListProps = {
   counts: DailyEventCount[];
   isLoading: boolean;
   loadingText: string;
+  loadingDescription?: string;
   emptyText: string;
+  emptyDescription?: string;
 };
 
-export function EventCountsList({ counts, isLoading, loadingText, emptyText }: EventCountsListProps) {
+export function EventCountsList({
+  counts,
+  isLoading,
+  loadingText,
+  loadingDescription,
+  emptyText,
+  emptyDescription,
+}: EventCountsListProps) {
   if (isLoading) {
-    return <StateNotice variant="loading" title={loadingText} />;
+    return <StateNotice variant="loading" title={loadingText} description={loadingDescription} />;
   }
 
   if (counts.length === 0) {
-    return <StateNotice variant="empty" title={emptyText} />;
+    return <StateNotice variant="empty" title={emptyText} description={emptyDescription} />;
   }
 
   return (

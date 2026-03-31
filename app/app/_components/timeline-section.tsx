@@ -9,7 +9,9 @@ type TimelineSectionProps = {
   items: TodayTimelineItem[];
   isLoading: boolean;
   loadingText: string;
+  loadingDescription?: string;
   emptyText: string;
+  emptyDescription?: string;
   formatTime?: (date: Date) => string;
   renderItemEditor?: (item: TodayTimelineItem) => ReactNode;
   renderItemActions?: (item: TodayTimelineItem) => ReactNode;
@@ -44,7 +46,9 @@ export function TimelineSection({
   items,
   isLoading,
   loadingText,
+  loadingDescription,
   emptyText,
+  emptyDescription,
   formatTime = formatClockTime,
   renderItemEditor,
   renderItemActions,
@@ -52,9 +56,9 @@ export function TimelineSection({
   return (
     <SummarySection title={title}>
       {isLoading ? (
-        <StateNotice variant="loading" title={loadingText} />
+        <StateNotice variant="loading" title={loadingText} description={loadingDescription} />
       ) : items.length === 0 ? (
-        <StateNotice variant="empty" title={emptyText} />
+        <StateNotice variant="empty" title={emptyText} description={emptyDescription} />
       ) : (
         <ol className="space-y-2 text-sm text-slate-700">
           {items.map((item) => {

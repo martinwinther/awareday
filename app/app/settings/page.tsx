@@ -91,6 +91,8 @@ export default function SettingsPage() {
   }, [loadActivityLabels, loadEventLabels, user]);
 
   const isMutating = activeMutationKey !== null;
+  const hasLoadedLabels = !isLoadingActivityLabels && !isLoadingEventLabels;
+  const hasNoSavedLabels = hasLoadedLabels && activityLabels.length === 0 && eventLabels.length === 0;
 
   const startEditingActivityLabel = (label: ActivityLabel) => {
     setEditingActivityLabelId(label.id);
@@ -326,7 +328,22 @@ export default function SettingsPage() {
         <p className="ui-section-title">Settings</p>
         <h2 className="text-base font-semibold text-slate-900">Saved labels</h2>
         <p className="text-sm text-slate-600">Manage quick labels used on Today for activities and events.</p>
+        {hasNoSavedLabels ? (
+          <StateNotice
+            variant="empty"
+            title="No saved labels yet."
+            description="Add activity and event labels below to unlock faster one-tap logging on Today."
+          />
+        ) : null}
       </section>
+
+      {errorMessage ? (
+        <StateNotice
+          variant="error"
+          title="We could not update your labels."
+          description={errorMessage}
+        />
+      ) : null}
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Activity labels</p>
@@ -344,7 +361,11 @@ export default function SettingsPage() {
         </form>
 
         {isLoadingActivityLabels ? (
-          <StateNotice variant="loading" title="Loading activity labels..." />
+          <StateNotice
+            variant="loading"
+            title="Loading activity labels..."
+            description="Fetching your saved activity quick chips."
+          />
         ) : activityLabels.length === 0 ? (
           <StateNotice
             variant="empty"
@@ -434,7 +455,11 @@ export default function SettingsPage() {
         </form>
 
         {isLoadingEventLabels ? (
-          <StateNotice variant="loading" title="Loading event labels..." />
+          <StateNotice
+            variant="loading"
+            title="Loading event labels..."
+            description="Fetching your saved event quick chips."
+          />
         ) : eventLabels.length === 0 ? (
           <StateNotice
             variant="empty"
@@ -507,8 +532,6 @@ export default function SettingsPage() {
           </ul>
         )}
       </section>
-
-      {errorMessage ? <StateNotice variant="error" title="Could not update labels." description={errorMessage} /> : null}
     </div>
   );
 }

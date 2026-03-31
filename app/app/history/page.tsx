@@ -142,14 +142,22 @@ export default function HistoryPage() {
         </div>
       </SummarySection>
 
-      {errorMessage ? <StateNotice variant="error" title="Could not load this day." description={errorMessage} /> : null}
+      {errorMessage ? (
+        <StateNotice
+          variant="error"
+          title="We could not load this day."
+          description={errorMessage}
+        />
+      ) : null}
 
       <SummarySection title="Activity totals">
         <ActivityTotalsList
           totals={activityTotals}
           isLoading={isLoading}
           loadingText={`Loading activity totals for ${formattedSelectedDay}...`}
+          loadingDescription="Calculating completed duration from activity start and end entries."
           emptyText={`No completed activities logged on ${formattedSelectedDay}.`}
+          emptyDescription="This day has no matched start/end activity pairs yet."
         />
       </SummarySection>
 
@@ -158,7 +166,9 @@ export default function HistoryPage() {
           counts={eventCounts}
           isLoading={isLoading}
           loadingText={`Loading event counts for ${formattedSelectedDay}...`}
+          loadingDescription="Counting timestamped events for the selected day."
           emptyText={`No events logged on ${formattedSelectedDay}.`}
+          emptyDescription="Log one-off events on that day to see totals here."
         />
       </SummarySection>
 
@@ -167,7 +177,9 @@ export default function HistoryPage() {
         items={timelineItems}
         isLoading={isLoading}
         loadingText={`Loading timeline for ${formattedSelectedDay}...`}
+        loadingDescription="Merging activity and event entries in chronological order."
         emptyText={`No history entries found for ${formattedSelectedDay}.`}
+        emptyDescription="Try another day, or log activity and events to build history."
       />
     </div>
   );

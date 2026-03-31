@@ -6,21 +6,25 @@ type ActivityTotalsListProps = {
   totals: DailyActivityTotal[];
   isLoading: boolean;
   loadingText: string;
+  loadingDescription?: string;
   emptyText: string;
+  emptyDescription?: string;
 };
 
 export function ActivityTotalsList({
   totals,
   isLoading,
   loadingText,
+  loadingDescription,
   emptyText,
+  emptyDescription,
 }: ActivityTotalsListProps) {
   if (isLoading) {
-    return <StateNotice variant="loading" title={loadingText} />;
+    return <StateNotice variant="loading" title={loadingText} description={loadingDescription} />;
   }
 
   if (totals.length === 0) {
-    return <StateNotice variant="empty" title={emptyText} />;
+    return <StateNotice variant="empty" title={emptyText} description={emptyDescription} />;
   }
 
   return (

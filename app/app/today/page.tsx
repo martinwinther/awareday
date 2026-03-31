@@ -938,7 +938,13 @@ export default function TodayPage() {
         </div>
       </SummarySection>
 
-      {errorMessage ? <StateNotice variant="error" title="Something went wrong." description={errorMessage} /> : null}
+      {errorMessage ? (
+        <StateNotice
+          variant="error"
+          title="We could not finish that action."
+          description={errorMessage}
+        />
+      ) : null}
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Open activities</p>
@@ -967,7 +973,9 @@ export default function TodayPage() {
           totals={todayActivityTotals}
           isLoading={isLoadingActivities}
           loadingText="Loading today activity totals..."
+          loadingDescription="Calculating completed time from your start and end entries."
           emptyText="No completed activity totals yet today."
+          emptyDescription="Start and end an activity to see duration totals here."
         />
       </SummarySection>
 
@@ -977,7 +985,9 @@ export default function TodayPage() {
           counts={groupedCounts}
           isLoading={isLoadingEvents}
           loadingText="Loading today event counts..."
+          loadingDescription="Grouping your logged events for today."
           emptyText="No events logged yet today."
+          emptyDescription="Log an event in Quick log to see counts appear."
         />
       </SummarySection>
 
@@ -986,7 +996,9 @@ export default function TodayPage() {
         items={todayTimeline}
         isLoading={isLoadingActivities || isLoadingEvents}
         loadingText="Loading today timeline..."
+        loadingDescription="Bringing together activity and event entries in time order."
         emptyText="No entries in today timeline yet."
+        emptyDescription="Your activity starts, ends, and events will appear here."
         renderItemEditor={renderTimelineEditor}
         renderItemActions={renderTimelineActions}
       />
