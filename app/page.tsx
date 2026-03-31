@@ -20,7 +20,7 @@ export default function HomePage() {
     <main className="app-shell">
       <section className="app-frame justify-center p-5">
         <div className="ui-card text-center">
-          <p className="text-sm text-slate-600">Loading Awareday...</p>
+          <p className="text-sm text-stone-600">Loading Awareday...</p>
         </div>
       </section>
     </main>

@@ -120,7 +120,7 @@ export default function HistoryPage() {
   return (
     <div className="space-y-4">
       <SummarySection title="History">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-amber-100 bg-[#fff8ef] p-2">
           <button
             type="button"
             className="ui-button ui-button-ghost h-10 px-3"
@@ -128,7 +128,7 @@ export default function HistoryPage() {
           >
             Previous
           </button>
-          <p className="text-sm font-medium text-slate-800">{formattedSelectedDay}</p>
+          <p className="text-sm font-medium text-stone-800">{formattedSelectedDay}</p>
           <button
             type="button"
             className="ui-button ui-button-ghost h-10 px-3"

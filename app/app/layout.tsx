@@ -11,9 +11,9 @@ type AppLayoutProps = {
 };
 
 const appNavItems = [
-  { href: "/app/today", label: "Today" },
-  { href: "/app/history", label: "History" },
-  { href: "/app/settings", label: "Settings" },
+  { href: "/app/today", label: "Today", subtitle: "Capture the day as it unfolds." },
+  { href: "/app/history", label: "History", subtitle: "Review any day in a calm timeline." },
+  { href: "/app/settings", label: "Settings", subtitle: "Manage your reusable quick labels." },
 ] as const;
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -30,6 +30,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         day: "numeric",
       }).format(new Date()),
     [],
+  );
+
+  const activeNavItem = useMemo(
+    () => appNavItems.find((item) => pathname.startsWith(item.href)) ?? appNavItems[0],
+    [pathname],
   );
 
   useEffect(() => {
@@ -58,7 +63,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className="app-shell">
         <div className="app-frame justify-center p-5">
           <div className="ui-card text-center">
-            <p className="text-sm text-slate-600">Checking your session...</p>
+            <p className="text-sm text-stone-600">Checking your session...</p>
           </div>
         </div>
       </div>
@@ -70,16 +75,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className="app-frame">
         <header className="app-header">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Awareday</p>
-            <button type="button" className="ui-button ui-button-ghost h-9 px-3" onClick={handleSignOut}>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600">Awareday</p>
+            </div>
+            <button type="button" className="ui-button ui-button-ghost h-9 px-3 text-xs" onClick={handleSignOut}>
               Sign out
             </button>
           </div>
-          <div className="flex items-end justify-between gap-3">
-            <h1 className="text-xl font-semibold text-slate-900">Your log</h1>
-            <p className="text-xs text-slate-500">{todayLabel}</p>
+          <div className="space-y-1">
+            <div className="flex items-end justify-between gap-3">
+              <h1 className="text-[1.45rem] font-semibold leading-tight text-stone-900">{activeNavItem.label}</h1>
+              <p className="rounded-full border border-amber-200 bg-[#fff8ee] px-2.5 py-1 text-[11px] font-medium text-stone-600">
+                {todayLabel}
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed text-stone-500">
+              {activeNavItem.subtitle}
+            </p>
           </div>
-          {signOutError ? <p className="text-xs text-rose-600">{signOutError}</p> : null}
+          {signOutError ? <p className="text-xs text-rose-700">{signOutError}</p> : null}
         </header>
 
         <main className="app-content">{children}</main>
@@ -92,9 +107,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`ui-button h-10 text-xs ${isActive ? "ui-button-primary" : "ui-button-ghost"}`}
+                className={`app-nav-link ${isActive ? "app-nav-link-active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
               >
-                {item.label}
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-amber-600" : "bg-amber-300"}`}
+                    aria-hidden
+                  />
+                  <span>{item.label}</span>
+                </span>
               </Link>
             );
           })}

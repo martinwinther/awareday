@@ -30,9 +30,12 @@ export function ActivityTotalsList({
   return (
     <ul className="space-y-2 text-sm">
       {totals.map((item) => (
-        <li key={item.normalizedLabel} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-          <span className="font-medium text-slate-800">{item.label}</span>
-          <span className="text-slate-600">{formatDuration(item.totalDurationMs)}</span>
+        <li
+          key={item.normalizedLabel}
+          className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+        >
+          <span className="font-medium text-stone-900">{item.label}</span>
+          <span className="font-medium text-amber-900">{formatDuration(item.totalDurationMs)}</span>
         </li>
       ))}
     </ul>

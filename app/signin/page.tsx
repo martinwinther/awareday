@@ -93,17 +93,17 @@ export default function SignInPage() {
       <section className="app-frame justify-center p-5">
         <div className="ui-card space-y-5">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Awareday</p>
-            <h1 className="text-2xl font-semibold text-slate-900">Sign in to log your day</h1>
-            <p className="text-sm text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">Awareday</p>
+            <h1 className="text-2xl font-semibold text-stone-900">Sign in to log your day</h1>
+            <p className="text-sm text-stone-600">
               Capture what started, what ended, and what happened in a clean daily timeline.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 text-sm text-slate-600">
-            <div className="rounded-xl bg-slate-50 px-3 py-2">Fast mobile-first logging</div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">Activity totals from timestamps</div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">Daily event counts and history</div>
+          <div className="grid grid-cols-1 gap-2 text-sm text-stone-600">
+            <div className="rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2">Fast mobile-first logging</div>
+            <div className="rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2">Activity totals from timestamps</div>
+            <div className="rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2">Daily event counts and history</div>
           </div>
 
           {errorMessage ? (
@@ -114,7 +114,7 @@ export default function SignInPage() {
 
           <form className="space-y-3" onSubmit={handleEmailSubmit}>
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-slate-600">Email</span>
+              <span className="text-xs font-medium text-stone-600">Email</span>
               <input
                 type="email"
                 className="ui-input w-full"
@@ -127,7 +127,7 @@ export default function SignInPage() {
             </label>
 
             <label className="block space-y-1">
-              <span className="text-xs font-medium text-slate-600">Password</span>
+              <span className="text-xs font-medium text-stone-600">Password</span>
               <input
                 type="password"
                 className="ui-input w-full"
@@ -158,9 +158,9 @@ export default function SignInPage() {
           </form>
 
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs uppercase tracking-wide text-slate-400">or</span>
-            <div className="h-px flex-1 bg-slate-200" />
+            <div className="h-px flex-1 bg-amber-200" />
+            <span className="text-xs uppercase tracking-wide text-stone-400">or</span>
+            <div className="h-px flex-1 bg-amber-200" />
           </div>
 
           <button
@@ -172,7 +172,7 @@ export default function SignInPage() {
             {isSubmitting ? "Signing in..." : "Continue with Google"}
           </button>
 
-          <p className="text-xs text-slate-500">Use email/password or Google to sign in for MVP.</p>
+          <p className="text-xs text-stone-500">Use email/password or Google to sign in for MVP.</p>
         </div>
       </section>
     </main>

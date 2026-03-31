@@ -25,6 +25,9 @@ type DailyFeedbackSectionsProps = {
   activitySection: SectionCopy;
   eventSection: SectionCopy;
   timelineSection: SectionCopy;
+  activitySectionTone?: "default" | "soft";
+  eventSectionTone?: "default" | "soft";
+  timelineSectionTone?: "default" | "soft";
   renderTimelineEditor?: (item: TodayTimelineItem) => ReactNode;
   renderTimelineActions?: (item: TodayTimelineItem) => ReactNode;
 };
@@ -39,12 +42,15 @@ export function DailyFeedbackSections({
   activitySection,
   eventSection,
   timelineSection,
+  activitySectionTone = "default",
+  eventSectionTone = "default",
+  timelineSectionTone = "default",
   renderTimelineEditor,
   renderTimelineActions,
 }: DailyFeedbackSectionsProps) {
   return (
-    <>
-      <SummarySection title={activitySection.title}>
+    <div className="space-y-4">
+      <SummarySection title={activitySection.title} tone={activitySectionTone}>
         <ActivityTotalsList
           totals={activityTotals}
           isLoading={isLoadingActivityTotals}
@@ -55,7 +61,7 @@ export function DailyFeedbackSections({
         />
       </SummarySection>
 
-      <SummarySection title={eventSection.title}>
+      <SummarySection title={eventSection.title} tone={eventSectionTone}>
         <EventCountsList
           counts={eventCounts}
           isLoading={isLoadingEventCounts}
@@ -68,6 +74,7 @@ export function DailyFeedbackSections({
 
       <TimelineSection
         title={timelineSection.title}
+        tone={timelineSectionTone}
         items={timelineItems}
         isLoading={isLoadingTimeline}
         loadingText={timelineSection.loadingText}
@@ -77,7 +84,7 @@ export function DailyFeedbackSections({
         renderItemEditor={renderTimelineEditor}
         renderItemActions={renderTimelineActions}
       />
-    </>
+    </div>
   );
 }
 

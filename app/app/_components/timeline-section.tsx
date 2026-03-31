@@ -7,6 +7,7 @@ import { TimelineRow } from "./timeline-row";
 
 type TimelineSectionProps = {
   title: string;
+  tone?: "default" | "soft";
   items: TodayTimelineItem[];
   isLoading: boolean;
   loadingText: string;
@@ -20,6 +21,7 @@ type TimelineSectionProps = {
 
 export function TimelineSection({
   title,
+  tone = "default",
   items,
   isLoading,
   loadingText,
@@ -31,13 +33,13 @@ export function TimelineSection({
   renderItemActions,
 }: TimelineSectionProps) {
   return (
-    <SummarySection title={title}>
+    <SummarySection title={title} tone={tone}>
       {isLoading ? (
         <StateNotice variant="loading" title={loadingText} description={loadingDescription} />
       ) : items.length === 0 ? (
         <StateNotice variant="empty" title={emptyText} description={emptyDescription} />
       ) : (
-        <ol className="space-y-2 text-sm text-slate-700">
+        <ol className="space-y-2 text-sm text-stone-700">
           {items.map((item) => {
             const editor = renderItemEditor?.(item);
             return (

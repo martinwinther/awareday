@@ -326,8 +326,8 @@ export default function SettingsPage() {
     <div className="space-y-4">
       <section className="ui-card ui-section">
         <p className="ui-section-title">Settings</p>
-        <h2 className="text-base font-semibold text-slate-900">Saved labels</h2>
-        <p className="text-sm text-slate-600">Manage quick labels used on Today for activities and events.</p>
+        <h2 className="text-base font-semibold text-stone-900">Saved labels</h2>
+        <p className="text-sm text-stone-600">Manage quick labels used on Today for activities and events.</p>
         {hasNoSavedLabels ? (
           <StateNotice
             variant="empty"
@@ -380,7 +380,7 @@ export default function SettingsPage() {
               const isSaving = activeMutationKey === `activity:save:${label.id}`;
 
               return (
-                <li key={label.id} className="rounded-xl bg-slate-50 px-3 py-2">
+                <li key={label.id} className="rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2.5">
                   {isEditing ? (
                     <form
                       className="space-y-2"
@@ -411,7 +411,7 @@ export default function SettingsPage() {
                     </form>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-slate-800">{label.name}</p>
+                      <p className="truncate text-sm font-medium text-stone-800">{label.name}</p>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -474,7 +474,7 @@ export default function SettingsPage() {
               const isSaving = activeMutationKey === `event:save:${label.id}`;
 
               return (
-                <li key={label.id} className="rounded-xl bg-slate-50 px-3 py-2">
+                <li key={label.id} className="rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2.5">
                   {isEditing ? (
                     <form
                       className="space-y-2"
@@ -505,7 +505,7 @@ export default function SettingsPage() {
                     </form>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-slate-800">{label.name}</p>
+                      <p className="truncate text-sm font-medium text-stone-800">{label.name}</p>
                       <div className="flex gap-2">
                         <button
                           type="button"

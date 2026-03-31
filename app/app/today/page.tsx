@@ -6,7 +6,6 @@ import { Timestamp } from "firebase/firestore";
 import { DailyFeedbackSections } from "../_components/daily-feedback-sections";
 import { formatClockTime } from "../_components/summary-helpers";
 import { StateNotice } from "../_components/state-notice";
-import { SummarySection } from "../_components/summary-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
 import { deriveOpenActivities } from "@/lib/firestore/derive-open-activities";
@@ -786,166 +785,180 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <SummarySection title="Quick log">
-        <div className="space-y-4">
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Activity</p>
-              <p className="text-xs text-slate-500">
-                {openActivitiesToday.length} open {openActivitiesToday.length === 1 ? "activity" : "activities"}
-              </p>
-            </div>
-            <form className="space-y-2" onSubmit={(event) => void handleActivitySubmit(event)}>
-              <input
-                className="ui-input h-12 rounded-2xl px-4 text-base"
-                placeholder="Type an activity label"
-                value={activityLabelInput}
-                onChange={(event) => {
-                  setActivityLabelInput(event.target.value);
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#f4dcba] via-[#f7e6cb] to-[#f2d8bb] p-4 shadow-[0_24px_44px_-32px_rgba(76,55,40,0.9)]">
+        <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
+        <div className="relative space-y-4">
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600">Today flow</p>
+            <h2 className="text-[1.35rem] font-semibold leading-tight text-stone-900">Quick log</h2>
+            <p className="text-sm leading-relaxed text-stone-700">Capture activity starts, ends, and one-off moments in seconds.</p>
+          </div>
 
-                  if (event.target.value.trim().length > 0) {
-                    setIsSelectingOpenActivityToEnd(false);
-                  }
-                }}
-                disabled={isMutatingActivity}
-                autoComplete="off"
-                enterKeyHint="go"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="submit"
-                  className="ui-button ui-button-success h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
-                  disabled={isMutatingActivity}
-                >
-                  {isStartingActivity ? "Starting..." : "Start activity"}
-                </button>
-                <button
-                  type="button"
-                  className="ui-button ui-button-warning h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
-                  onClick={() => void handleEndActivity(activityLabelInput)}
-                  disabled={isMutatingActivity}
-                >
-                  {isEndingActivity ? "Ending..." : "End activity"}
-                </button>
+          {errorMessage ? (
+            <StateNotice
+              variant="error"
+              title="We could not finish that action."
+              description={errorMessage}
+            />
+          ) : null}
+
+          <div className="space-y-4 rounded-[1.25rem] bg-[#fff9f0]/76 px-3 py-3.5 shadow-[inset_0_0_0_1px_rgba(236,199,160,0.55)]">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Activity</p>
+                <p className="rounded-full bg-[#f4e2c7] px-2.5 py-1 text-[11px] font-medium text-stone-600">
+                  {openActivitiesToday.length} open
+                </p>
               </div>
-            </form>
+              <form className="space-y-2.5" onSubmit={(event) => void handleActivitySubmit(event)}>
+                <input
+                  className="ui-input h-12 rounded-2xl border-amber-200/90 bg-[#fffdf8] px-4 text-base shadow-[0_8px_20px_-18px_rgba(71,53,40,0.9)]"
+                  placeholder="Type an activity label"
+                  value={activityLabelInput}
+                  onChange={(event) => {
+                    setActivityLabelInput(event.target.value);
 
-            {activityQuickLabels === null ? (
-              <StateNotice
-                variant="loading"
-                title="Loading quick activity labels..."
-                description="Your saved labels will appear here."
-              />
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500">Quick start</p>
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {displayedActivityQuickLabels.map((label) => (
+                    if (event.target.value.trim().length > 0) {
+                      setIsSelectingOpenActivityToEnd(false);
+                    }
+                  }}
+                  disabled={isMutatingActivity}
+                  autoComplete="off"
+                  enterKeyHint="go"
+                />
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
-                    key={label}
-                    type="button"
-                    className="ui-chip h-11 shrink-0 px-4 touch-manipulation active:scale-[0.99]"
-                    onClick={() => void handleStartActivity(label)}
+                    type="submit"
+                    className="ui-button ui-button-success h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_20px_-18px_rgba(146,103,47,0.9)] active:translate-y-[0.5px]"
                     disabled={isMutatingActivity}
                   >
-                    {label}
+                    {isStartingActivity ? "Starting..." : "Start activity"}
                   </button>
-                ))}
-                </div>
-              </div>
-            )}
-
-            {isSelectingOpenActivityToEnd ? (
-              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Choose an open activity to end</p>
                   <button
                     type="button"
-                    className="ui-button ui-button-ghost h-8 px-3 text-xs"
-                    onClick={() => setIsSelectingOpenActivityToEnd(false)}
-                    disabled={isEndingActivity}
+                    className="ui-button ui-button-warning h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_20px_-18px_rgba(180,83,9,0.9)] active:translate-y-[0.5px]"
+                    onClick={() => void handleEndActivity(activityLabelInput)}
+                    disabled={isMutatingActivity}
                   >
-                    Cancel
+                    {isEndingActivity ? "Ending..." : "End activity"}
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {openActivitiesToday.map((entry) => (
+              </form>
+
+              {activityQuickLabels === null ? (
+                <StateNotice
+                  variant="loading"
+                  title="Loading quick activity labels..."
+                  description="Your saved labels will appear here."
+                />
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="text-xs font-medium text-stone-500">Quick start</p>
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5">
+                    {displayedActivityQuickLabels.map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className="ui-chip h-11 shrink-0 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
+                        onClick={() => void handleStartActivity(label)}
+                        disabled={isMutatingActivity}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isSelectingOpenActivityToEnd ? (
+                <div className="space-y-2.5 rounded-2xl bg-[#f7e5cc]/65 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Choose an open activity to end</p>
                     <button
-                      key={entry.id}
                       type="button"
-                      className="ui-button ui-button-ghost h-12 w-full justify-between rounded-2xl px-3 text-left touch-manipulation active:scale-[0.99]"
-                      onClick={() => void endOpenActivity(entry)}
+                      className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                      onClick={() => setIsSelectingOpenActivityToEnd(false)}
                       disabled={isEndingActivity}
                     >
-                      <span className="truncate">{entry.label}</span>
-                      <span className="text-xs text-slate-500">Started {formatActivityStartTime(entry)}</span>
+                      Cancel
                     </button>
-                  ))}
+                  </div>
+                  <div className="space-y-2">
+                    {openActivitiesToday.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className="ui-button ui-button-ghost h-12 w-full justify-between rounded-2xl bg-[#fff9f1] px-3 text-left touch-manipulation shadow-[0_10px_14px_-16px_rgba(71,53,40,0.9)] active:translate-y-[0.5px]"
+                        onClick={() => void endOpenActivity(entry)}
+                        disabled={isEndingActivity}
+                      >
+                        <span className="truncate">{entry.label}</span>
+                        <span className="text-xs text-stone-500">Started {formatActivityStartTime(entry)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
 
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Event</p>
-            <form className="space-y-2" onSubmit={(event) => void handleSubmit(event)}>
-              <input
-                className="ui-input h-12 rounded-2xl px-4 text-base"
-                placeholder="Type an event label"
-                value={eventLabelInput}
-                onChange={(event) => setEventLabelInput(event.target.value)}
-                disabled={isSubmitting}
-                autoComplete="off"
-                enterKeyHint="go"
-              />
-              <button
-                type="submit"
-                className="ui-button ui-button-primary h-12 w-full touch-manipulation rounded-2xl text-[15px] active:scale-[0.99]"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Logging event..." : "Log event"}
-              </button>
-            </form>
+            <div className="h-px bg-amber-300/55" aria-hidden />
 
-            {eventQuickLabels === null ? (
-              <StateNotice
-                variant="loading"
-                title="Loading quick event labels..."
-                description="Your saved labels will appear here."
-              />
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500">Quick event</p>
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                  {displayedEventQuickLabels.map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      className="ui-chip h-11 shrink-0 px-4 touch-manipulation active:scale-[0.99]"
-                      onClick={() => void handleLogEvent(label)}
-                      disabled={isSubmitting}
-                    >
-                      {label}
-                    </button>
-                  ))}
+            <div className="space-y-3 pb-0.5 pt-0.5">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Event</p>
+              <form className="space-y-2.5" onSubmit={(event) => void handleSubmit(event)}>
+                <input
+                  className="ui-input h-12 rounded-2xl border-amber-200/90 bg-[#fffdf8] px-4 text-base shadow-[0_8px_20px_-18px_rgba(71,53,40,0.9)]"
+                  placeholder="Type an event label"
+                  value={eventLabelInput}
+                  onChange={(event) => setEventLabelInput(event.target.value)}
+                  disabled={isSubmitting}
+                  autoComplete="off"
+                  enterKeyHint="go"
+                />
+                <button
+                  type="submit"
+                  className="ui-button ui-button-primary h-12 w-full touch-manipulation rounded-2xl text-[15px] shadow-[0_14px_22px_-18px_rgba(120,69,20,0.9)] active:translate-y-[0.5px]"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Logging event..." : "Log event"}
+                </button>
+              </form>
+
+              {eventQuickLabels === null ? (
+                <StateNotice
+                  variant="loading"
+                  title="Loading quick event labels..."
+                  description="Your saved labels will appear here."
+                />
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="text-xs font-medium text-stone-500">Quick event</p>
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5">
+                    {displayedEventQuickLabels.map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className="ui-chip h-11 shrink-0 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
+                        onClick={() => void handleLogEvent(label)}
+                        disabled={isSubmitting}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </SummarySection>
+      </section>
 
-      {errorMessage ? (
-        <StateNotice
-          variant="error"
-          title="We could not finish that action."
-          description={errorMessage}
-        />
-      ) : null}
-
-      <section className="ui-card ui-section">
-        <p className="ui-section-title">Open activities</p>
+      <section className="space-y-2.5 rounded-2xl bg-gradient-to-b from-[#f5ede3]/60 to-[#ede3d6]/50 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+        <div className="flex items-center justify-between gap-2">
+          <p className="ui-section-title text-stone-600">Open activities</p>
+          <p className="text-xs font-medium text-stone-600">{openActivitiesToday.length} active</p>
+        </div>
         {isLoadingActivities ? (
           <StateNotice variant="loading" title="Loading open activities..." />
         ) : openActivitiesToday.length === 0 ? (
@@ -955,11 +968,14 @@ export default function TodayPage() {
             description="Start an activity in Quick log to see it here until you end it."
           />
         ) : (
-          <ul className="space-y-2 text-sm text-slate-700">
+          <ul className="space-y-2 text-sm text-stone-700">
             {openActivitiesToday.map((entry) => (
-              <li key={entry.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                <span className="font-medium text-slate-800">{entry.label}</span>
-                <span className="text-slate-500">Started {formatActivityStartTime(entry)}</span>
+              <li
+                key={entry.id}
+                className="flex items-center justify-between rounded-2xl bg-white/50 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+              >
+                <span className="font-medium text-stone-900">{entry.label}</span>
+                <span className="text-stone-500">Started {formatActivityStartTime(entry)}</span>
               </li>
             ))}
           </ul>
@@ -973,6 +989,9 @@ export default function TodayPage() {
         isLoadingActivityTotals={isLoadingActivities}
         isLoadingEventCounts={isLoadingEvents}
         isLoadingTimeline={isLoadingActivities || isLoadingEvents}
+        activitySectionTone="soft"
+        eventSectionTone="soft"
+        timelineSectionTone="default"
         activitySection={{
           title: "Today activity totals",
           loadingText: "Loading today activity totals...",

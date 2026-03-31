@@ -10,14 +10,14 @@ type TimelineRowProps = {
 
 function getBadgeStyles(kind: TodayTimelineItem["kind"]): string {
   if (kind === "activity-start") {
-    return "bg-emerald-100 text-emerald-700";
+    return "border border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 
   if (kind === "activity-end") {
-    return "bg-amber-100 text-amber-700";
+    return "border border-amber-200 bg-amber-50 text-amber-700";
   }
 
-  return "bg-sky-100 text-sky-700";
+  return "border border-indigo-200 bg-indigo-50 text-indigo-700";
 }
 
 function getBadgeLabel(kind: TodayTimelineItem["kind"]): string {
@@ -35,17 +35,23 @@ function getBadgeLabel(kind: TodayTimelineItem["kind"]): string {
 export function TimelineRow({ item, formatTime, editor, actions }: TimelineRowProps) {
   if (editor) {
     return (
-      <li key={`${item.kind}-${item.entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
+      <li
+        key={`${item.kind}-${item.entry.id}`}
+        className="space-y-2 rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+      >
         {editor}
       </li>
     );
   }
 
   return (
-    <li key={`${item.kind}-${item.entry.id}`} className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
+    <li
+      key={`${item.kind}-${item.entry.id}`}
+      className="space-y-2 rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+    >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-medium text-slate-800">{item.entry.label}</span>
-        <span className="text-slate-500">{formatTime(item.entry.timestamp.toDate())}</span>
+        <span className="font-medium text-stone-800">{item.entry.label}</span>
+        <span className="text-stone-500">{formatTime(item.entry.timestamp.toDate())}</span>
       </div>
       <div className="flex items-center justify-between gap-3">
         <span className={`rounded-full px-2 py-1 text-xs font-medium ${getBadgeStyles(item.kind)}`}>
