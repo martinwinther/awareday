@@ -786,7 +786,7 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#f4dcba] via-[#f7e6cb] to-[#f2d8bb] p-4 shadow-[0_24px_44px_-32px_rgba(76,55,40,0.9)]">
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#f3dab2] via-[#f6e4c8] to-[#f0d6b0] p-4 shadow-[0_28px_48px_-36px_rgba(76,55,40,0.95)]">
         <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
         <div className="relative space-y-4">
           <div className="space-y-1.5">
@@ -954,7 +954,7 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <section className="space-y-2.5 rounded-2xl bg-gradient-to-b from-[#f5ede3]/60 to-[#ede3d6]/50 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+      <section className="space-y-2.5 rounded-2xl bg-gradient-to-b from-[#faf5f0]/80 to-[#f5f1e8]/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_12px_-4px_rgba(98,75,55,0.08)]">
         <div className="flex items-center justify-between gap-2">
           <p className="ui-section-title text-stone-600">Open activities</p>
           <p className="text-xs font-medium text-stone-600">{openActivitiesToday.length} active</p>
@@ -972,10 +972,10 @@ export default function TodayPage() {
             {openActivitiesToday.map((entry) => (
               <li
                 key={entry.id}
-                className="flex items-center justify-between rounded-2xl bg-white/50 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                className="flex items-center justify-between rounded-2xl bg-white/60 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_4px_-2px_rgba(98,75,55,0.08)]"
               >
                 <span className="font-medium text-stone-900">{entry.label}</span>
-                <span className="text-stone-500">Started {formatActivityStartTime(entry)}</span>
+                <span className="text-xs text-stone-500">Started {formatActivityStartTime(entry)}</span>
               </li>
             ))}
           </ul>

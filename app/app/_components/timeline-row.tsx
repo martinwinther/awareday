@@ -37,7 +37,7 @@ export function TimelineRow({ item, formatTime, editor, actions }: TimelineRowPr
     return (
       <li
         key={`${item.kind}-${item.entry.id}`}
-        className="space-y-2 rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+        className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
       >
         {editor}
       </li>
@@ -47,7 +47,7 @@ export function TimelineRow({ item, formatTime, editor, actions }: TimelineRowPr
   return (
     <li
       key={`${item.kind}-${item.entry.id}`}
-      className="space-y-2 rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+      className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="font-medium text-stone-800">{item.entry.label}</span>

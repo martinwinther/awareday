@@ -31,10 +31,10 @@ export function EventCountsList({
       {counts.map((item) => (
         <li
           key={item.normalizedLabel}
-          className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#f9f3e9] to-[#f5ede3] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
+          className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
         >
           <span className="font-medium text-stone-900">{item.label}</span>
-          <span className="font-medium text-amber-900">{item.count}</span>
+          <span className="font-semibold text-amber-800">{item.count}</span>
         </li>
       ))}
     </ul>

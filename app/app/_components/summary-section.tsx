@@ -8,7 +8,7 @@ type SummarySectionProps = {
 
 function getToneClasses(tone: "default" | "soft"): string {
   if (tone === "soft") {
-    return "rounded-2xl bg-gradient-to-b from-[#f5ede3]/60 to-[#ede3d6]/50 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]";
+    return "rounded-2xl bg-gradient-to-b from-[#faf5f0]/80 to-[#f5f1e8]/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_12px_-4px_rgba(98,75,55,0.08)]";
   }
 
   return "ui-card";
