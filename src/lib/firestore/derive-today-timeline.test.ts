@@ -44,4 +44,19 @@ describe("deriveTodayTimeline", () => {
   it("returns empty timeline for empty input", () => {
     expect(deriveTodayTimeline([], [], new Date("2026-04-01T12:00:00"))).toEqual([]);
   });
+
+  it("treats local-day boundaries as inclusive start and exclusive next-day start", () => {
+    const activityEntries = [
+      buildActivityEntry({ id: "a-start-boundary", label: "Read", action: "start", timestamp: at("2026-04-01T00:00:00") }),
+      buildActivityEntry({ id: "a-next-day", label: "Read", action: "end", timestamp: at("2026-04-02T00:00:00") }),
+    ];
+    const eventEntries = [
+      buildEventEntry({ id: "e-inside", label: "Coffee", timestamp: at("2026-04-01T23:59:59") }),
+      buildEventEntry({ id: "e-next-day", label: "Water", timestamp: at("2026-04-02T00:00:00") }),
+    ];
+
+    const timeline = deriveTodayTimeline(activityEntries, eventEntries, new Date("2026-04-01T10:00:00"));
+
+    expect(timeline.map((item) => item.entry.id)).toEqual(["e-inside", "a-start-boundary"]);
+  });
 });

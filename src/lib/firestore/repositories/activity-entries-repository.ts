@@ -14,6 +14,7 @@ import type {
   ActivityEntry,
   ActivityEntryDocument,
 } from "@/lib/firestore/models";
+import { getLocalDayBounds } from "@/lib/firestore/local-day";
 import { cleanLabelName, normalizeLabelName } from "@/lib/firestore/normalize-label";
 import { activityEntriesCollectionRef } from "@/lib/firestore/paths";
 
@@ -72,11 +73,7 @@ export async function listActivityEntries(userId: string): Promise<ActivityEntry
 }
 
 export async function listActivityEntriesForDay(userId: string, day: Date): Promise<ActivityEntry[]> {
-  const startOfDay = new Date(day);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const startOfNextDay = new Date(startOfDay);
-  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+  const { startOfDay, startOfNextDay } = getLocalDayBounds(day);
 
   const collectionRef = activityEntriesCollectionRef(userId);
   const entriesQuery = query(

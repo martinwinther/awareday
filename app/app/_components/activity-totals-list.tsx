@@ -1,3 +1,6 @@
+          key={item.normalizedLabel}
+          className="flex items-center justify-between rounded-2xl border border-amber-100 bg-[#fff8ee] px-3 py-2"
+      {totals.map((item) => (
 import type { DailyActivityTotal } from "@/lib/firestore/derive-activity-totals";
 import { formatDuration } from "./summary-helpers";
 import { StateNotice } from "./state-notice";
@@ -29,13 +32,13 @@ export function ActivityTotalsList({
 
   return (
     <ul className="space-y-2 text-sm">
-      {totals.map((item) => (
-        <li
-          key={item.normalizedLabel}
           className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
-        >
+        <li
           <span className="font-medium text-stone-900">{item.label}</span>
           <span className="font-semibold text-amber-800">{formatDuration(item.totalDurationMs)}</span>
+        >
+          <span className="font-medium text-stone-800">{item.label}</span>
+          <span className="text-stone-600">{formatDuration(item.totalDurationMs)}</span>
         </li>
       ))}
     </ul>

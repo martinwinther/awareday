@@ -1,4 +1,5 @@
 import type { ActivityEntry } from "@/lib/firestore/models";
+import { isOnLocalDay } from "@/lib/firestore/local-day";
 
 export type CompletedActivitySession = {
   normalizedLabel: string;
@@ -16,13 +17,6 @@ export type DailyActivityTotal = {
   totalDurationMs: number;
 };
 
-function isOnLocalDay(date: Date, day: Date): boolean {
-  return (
-    date.getFullYear() === day.getFullYear() &&
-    date.getMonth() === day.getMonth() &&
-    date.getDate() === day.getDate()
-  );
-}
 
 export function deriveCompletedActivitySessions(entries: ActivityEntry[]): CompletedActivitySession[] {
   const chronologicalEntries = [...entries].sort(

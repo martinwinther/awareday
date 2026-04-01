@@ -1,3 +1,6 @@
+          key={item.normalizedLabel}
+          className="flex items-center justify-between rounded-2xl border border-amber-100 bg-[#fff8ee] px-3 py-2"
+      {counts.map((item) => (
 import type { DailyEventCount } from "@/lib/firestore/derive-daily-event-counts";
 import { StateNotice } from "./state-notice";
 
@@ -28,13 +31,13 @@ export function EventCountsList({
 
   return (
     <ul className="space-y-2 text-sm">
-      {counts.map((item) => (
-        <li
-          key={item.normalizedLabel}
           className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
-        >
+        <li
           <span className="font-medium text-stone-900">{item.label}</span>
           <span className="font-semibold text-amber-800">{item.count}</span>
+        >
+          <span className="font-medium text-stone-800">{item.label}</span>
+          <span className="text-stone-600">{item.count}</span>
         </li>
       ))}
     </ul>

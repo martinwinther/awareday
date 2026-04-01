@@ -10,6 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { EventEntry, EventEntryDocument } from "@/lib/firestore/models";
+import { getLocalDayBounds } from "@/lib/firestore/local-day";
 import { cleanLabelName, normalizeLabelName } from "@/lib/firestore/normalize-label";
 import { eventEntriesCollectionRef } from "@/lib/firestore/paths";
 
@@ -65,11 +66,7 @@ export async function listEventEntries(userId: string): Promise<EventEntry[]> {
 }
 
 export async function listEventEntriesForDay(userId: string, day: Date): Promise<EventEntry[]> {
-  const startOfDay = new Date(day);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const startOfNextDay = new Date(startOfDay);
-  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+  const { startOfDay, startOfNextDay } = getLocalDayBounds(day);
 
   const collectionRef = eventEntriesCollectionRef(userId);
   const entriesQuery = query(

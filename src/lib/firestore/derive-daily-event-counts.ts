@@ -1,4 +1,5 @@
 import type { EventEntry } from "@/lib/firestore/models";
+import { isOnLocalDay } from "@/lib/firestore/local-day";
 
 export type DailyEventCount = {
   normalizedLabel: string;
@@ -6,13 +7,6 @@ export type DailyEventCount = {
   count: number;
 };
 
-function isOnLocalDay(date: Date, day: Date): boolean {
-  return (
-    date.getFullYear() === day.getFullYear() &&
-    date.getMonth() === day.getMonth() &&
-    date.getDate() === day.getDate()
-  );
-}
 
 export function deriveDailyEventCounts(entries: EventEntry[], day: Date): DailyEventCount[] {
   const countsByLabel = new Map<string, DailyEventCount>();

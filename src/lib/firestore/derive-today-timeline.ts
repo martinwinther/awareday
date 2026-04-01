@@ -1,4 +1,5 @@
 import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
+import { isOnLocalDay } from "@/lib/firestore/local-day";
 
 export type TodayTimelineItem =
   | {
@@ -14,13 +15,6 @@ export type TodayTimelineItem =
       entry: EventEntry;
     };
 
-function isOnLocalDay(date: Date, day: Date): boolean {
-  return (
-    date.getFullYear() === day.getFullYear() &&
-    date.getMonth() === day.getMonth() &&
-    date.getDate() === day.getDate()
-  );
-}
 
 export function deriveTodayTimeline(
   activityEntries: ActivityEntry[],
