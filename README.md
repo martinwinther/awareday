@@ -58,6 +58,10 @@ npm run dev
 
 Fill `.env.local` with your Firebase Web App config from Project settings.
 
+## Firebase client env contract
+Only Firebase Web App config values should be set in `NEXT_PUBLIC_FIREBASE_*` variables.
+These values are public by design and are safe to ship to the browser.
+
 Required client env vars:
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -71,6 +75,7 @@ Optional client env vars:
 
 All Firebase values above are web-client config values (public by design) and are safe to use with the `NEXT_PUBLIC_` prefix.
 Do not place service account JSON, admin SDK keys, private keys, access tokens, or any non-public credentials in client env vars.
+Do not add `FIREBASE_PRIVATE_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, or any server-only credential in this project unless you are explicitly adding secure server code.
 
 Firebase project checklist for current MVP foundation:
 - Firebase Authentication enabled with Email/Password and Google providers on
@@ -81,6 +86,7 @@ Firebase project checklist for current MVP foundation:
 ## Deployment safety checklist
 - Set the same `NEXT_PUBLIC_FIREBASE_*` values in your deployment provider for each deploy context you use.
 - Ensure Firebase Authentication authorized domains include your deployed site domain.
+- Ensure all required values are non-empty (`API_KEY`, `AUTH_DOMAIN`, `PROJECT_ID`, `APP_ID`) in every deploy context.
 - Do not commit `.env*` files with real values.
 - Run a local safety pass before deploying:
 
@@ -99,6 +105,7 @@ If deploying with Netlify, configure these variables in Netlify Site settings ->
 - optional: `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
 
 Set them for each active context you use (for example: Production, Deploy Previews, and Branch Deploys) so sign-in and Firestore access behave consistently.
+After changing Netlify env vars, trigger a new deploy so updated values are compiled into the Next.js client bundle.
 
 ## Firestore security rules
 This repository uses strict per-user Firestore rules for these collections:
