@@ -1,5 +1,3 @@
-        renderItemActions={renderTimelineActions}
-}: DailyFeedbackSectionsProps) {
 import type { ReactNode } from "react";
 import type { DailyActivityTotal } from "@/lib/firestore/derive-activity-totals";
 import type { DailyEventCount } from "@/lib/firestore/derive-daily-event-counts";
@@ -49,9 +47,9 @@ export function DailyFeedbackSections({
   timelineSectionTone = "default",
   renderTimelineEditor,
   renderTimelineActions,
-    <div className="space-y-4">
+}: DailyFeedbackSectionsProps) {
   return (
-    <>
+    <div className="space-y-4">
       <SummarySection title={activitySection.title} tone={activitySectionTone}>
         <ActivityTotalsList
           totals={activityTotals}
@@ -84,9 +82,8 @@ export function DailyFeedbackSections({
         emptyText={timelineSection.emptyText}
         emptyDescription={timelineSection.emptyDescription}
         renderItemEditor={renderTimelineEditor}
-    </div>
+        renderItemActions={renderTimelineActions}
       />
-    </>
+    </div>
   );
 }
-

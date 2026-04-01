@@ -1,5 +1,3 @@
-    <li
-      <li
 import type { ReactNode } from "react";
 import type { TodayTimelineItem } from "@/lib/firestore/derive-today-timeline";
 
@@ -37,20 +35,14 @@ function getBadgeLabel(kind: TodayTimelineItem["kind"]): string {
 export function TimelineRow({ item, formatTime, editor, actions }: TimelineRowProps) {
   if (editor) {
     return (
-        className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
-        key={`${item.kind}-${item.entry.id}`}
-        className="space-y-2 rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2.5"
-      >
+      <li className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]">
         {editor}
       </li>
     );
   }
 
   return (
-      className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]"
-      key={`${item.kind}-${item.entry.id}`}
-      className="space-y-2 rounded-2xl border border-amber-100 bg-[#fff8ef] px-3 py-2.5"
-    >
+    <li className="space-y-2 rounded-2xl bg-gradient-to-r from-[#faf5f0] to-[#f5f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_6px_-3px_rgba(98,75,55,0.1)]">
       <div className="flex items-center justify-between gap-3">
         <span className="font-medium text-stone-800">{item.entry.label}</span>
         <span className="text-stone-500">{formatTime(item.entry.timestamp.toDate())}</span>
@@ -64,4 +56,3 @@ export function TimelineRow({ item, formatTime, editor, actions }: TimelineRowPr
     </li>
   );
 }
-
