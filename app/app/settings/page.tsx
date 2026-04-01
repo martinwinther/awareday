@@ -323,10 +323,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <section className="ui-card ui-section">
         <p className="ui-section-title">Settings</p>
-        <h2 className="text-base font-semibold text-stone-900">Saved labels</h2>
+        <h2 className="text-lg font-semibold leading-tight text-stone-900">Saved labels</h2>
         <p className="text-sm text-stone-600">Manage quick labels used on Today for activities and events.</p>
         {hasNoSavedLabels ? (
           <StateNotice
@@ -347,7 +347,7 @@ export default function SettingsPage() {
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Activity labels</p>
-        <form className="flex gap-2" onSubmit={(event) => void handleAddActivityLabel(event)}>
+        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void handleAddActivityLabel(event)}>
           <input
             className="ui-input"
             value={activityLabelInput}
@@ -355,7 +355,7 @@ export default function SettingsPage() {
             placeholder="Add activity label"
             disabled={isMutating}
           />
-          <button type="submit" className="ui-button ui-button-primary h-11 px-4" disabled={isMutating}>
+          <button type="submit" className="ui-button ui-button-primary h-11 px-4 sm:self-start" disabled={isMutating}>
             {activeMutationKey === "activity:add" ? "Adding..." : "Add"}
           </button>
         </form>
@@ -396,12 +396,12 @@ export default function SettingsPage() {
                         disabled={isMutating}
                       />
                       <div className="flex gap-2">
-                        <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+                        <button type="submit" className="ui-button ui-button-primary h-10 flex-1 text-xs" disabled={isMutating}>
                           {isSaving ? "Saving..." : "Save"}
                         </button>
                         <button
                           type="button"
-                          className="ui-button ui-button-ghost h-9 px-3 text-xs"
+                          className="ui-button ui-button-ghost h-10 px-3 text-xs"
                           onClick={stopEditingActivityLabel}
                           disabled={isMutating}
                         >
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                          className="ui-button ui-button-ghost h-10 px-3 text-xs"
                           onClick={() => startEditingActivityLabel(label)}
                           disabled={isMutating}
                         >
@@ -423,7 +423,7 @@ export default function SettingsPage() {
                         </button>
                         <button
                           type="button"
-                          className="ui-button ui-button-warning h-8 px-3 text-xs"
+                          className="ui-button ui-button-warning h-10 px-3 text-xs"
                           onClick={() => void handleDeleteActivityLabel(label)}
                           disabled={isMutating}
                         >
@@ -441,7 +441,7 @@ export default function SettingsPage() {
 
       <section className="ui-card ui-section">
         <p className="ui-section-title">Event labels</p>
-        <form className="flex gap-2" onSubmit={(event) => void handleAddEventLabel(event)}>
+        <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void handleAddEventLabel(event)}>
           <input
             className="ui-input"
             value={eventLabelInput}
@@ -449,7 +449,7 @@ export default function SettingsPage() {
             placeholder="Add event label"
             disabled={isMutating}
           />
-          <button type="submit" className="ui-button ui-button-primary h-11 px-4" disabled={isMutating}>
+          <button type="submit" className="ui-button ui-button-primary h-11 px-4 sm:self-start" disabled={isMutating}>
             {activeMutationKey === "event:add" ? "Adding..." : "Add"}
           </button>
         </form>
@@ -490,12 +490,12 @@ export default function SettingsPage() {
                         disabled={isMutating}
                       />
                       <div className="flex gap-2">
-                        <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+                        <button type="submit" className="ui-button ui-button-primary h-10 flex-1 text-xs" disabled={isMutating}>
                           {isSaving ? "Saving..." : "Save"}
                         </button>
                         <button
                           type="button"
-                          className="ui-button ui-button-ghost h-9 px-3 text-xs"
+                          className="ui-button ui-button-ghost h-10 px-3 text-xs"
                           onClick={stopEditingEventLabel}
                           disabled={isMutating}
                         >
@@ -509,7 +509,7 @@ export default function SettingsPage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          className="ui-button ui-button-ghost h-8 px-3 text-xs"
+                          className="ui-button ui-button-ghost h-10 px-3 text-xs"
                           onClick={() => startEditingEventLabel(label)}
                           disabled={isMutating}
                         >
@@ -517,7 +517,7 @@ export default function SettingsPage() {
                         </button>
                         <button
                           type="button"
-                          className="ui-button ui-button-warning h-8 px-3 text-xs"
+                          className="ui-button ui-button-warning h-10 px-3 text-xs"
                           onClick={() => void handleDeleteEventLabel(label)}
                           disabled={isMutating}
                         >

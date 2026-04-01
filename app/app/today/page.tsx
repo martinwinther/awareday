@@ -670,12 +670,12 @@ export default function TodayPage() {
               disabled={isMutating}
             />
             <div className="flex gap-2">
-              <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+              <button type="submit" className="ui-button ui-button-primary h-10 flex-1 text-xs" disabled={isMutating}>
                 {isMutating ? "Saving..." : "Save"}
               </button>
               <button
                 type="button"
-                className="ui-button ui-button-ghost h-9 px-3 text-xs"
+                className="ui-button ui-button-ghost h-10 px-3 text-xs"
                 onClick={stopEditingEntry}
                 disabled={isMutating}
               >
@@ -726,12 +726,12 @@ export default function TodayPage() {
             <option value="end">End</option>
           </select>
           <div className="flex gap-2">
-            <button type="submit" className="ui-button ui-button-primary h-9 flex-1 text-xs" disabled={isMutating}>
+            <button type="submit" className="ui-button ui-button-primary h-10 flex-1 text-xs" disabled={isMutating}>
               {isMutating ? "Saving..." : "Save"}
             </button>
             <button
               type="button"
-              className="ui-button ui-button-ghost h-9 px-3 text-xs"
+              className="ui-button ui-button-ghost h-10 px-3 text-xs"
               onClick={stopEditingActivityEntry}
               disabled={isMutating}
             >
@@ -751,7 +751,7 @@ export default function TodayPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="ui-button ui-button-ghost h-8 px-3 text-xs"
+              className="ui-button ui-button-ghost h-10 px-3 text-xs"
               onClick={() => startEditingEntry(entry)}
               disabled={activeMutationEntryId !== null}
             >
@@ -759,7 +759,7 @@ export default function TodayPage() {
             </button>
             <button
               type="button"
-              className="ui-button ui-button-warning h-8 px-3 text-xs"
+              className="ui-button ui-button-warning h-10 px-3 text-xs"
               onClick={() => void handleDeleteEntry(entry.id)}
               disabled={activeMutationEntryId !== null}
             >
@@ -776,7 +776,7 @@ export default function TodayPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            className="ui-button ui-button-ghost h-8 px-3 text-xs"
+            className="ui-button ui-button-ghost h-10 px-3 text-xs"
             onClick={() => startEditingActivityEntry(entry)}
             disabled={activeMutationEntryId !== null}
           >
@@ -784,7 +784,7 @@ export default function TodayPage() {
           </button>
           <button
             type="button"
-            className="ui-button ui-button-warning h-8 px-3 text-xs"
+            className="ui-button ui-button-warning h-10 px-3 text-xs"
             onClick={() => void handleDeleteActivityEntry(entry.id)}
             disabled={activeMutationEntryId !== null}
           >
@@ -950,7 +950,7 @@ export default function TodayPage() {
                 />
               ) : (
                 <div className="space-y-2.5">
-                  <p className="text-xs font-medium text-stone-500">Quick event</p>
+                  <p className="text-xs font-medium text-stone-500">Quick log</p>
                   <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5">
                     {displayedEventQuickLabels.map((label) => (
                       <button
@@ -999,7 +999,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <CollapsibleSection title="Today's Summary" defaultOpen={false}>
+      <CollapsibleSection title="Today's summary" defaultOpen={false}>
         <DailyFeedbackSections
           activityTotals={todayActivityTotals}
           eventCounts={groupedCounts}

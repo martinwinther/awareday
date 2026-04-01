@@ -118,24 +118,24 @@ export default function HistoryPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <SummarySection title="History">
         <div className="flex items-center justify-between gap-2 rounded-2xl border border-amber-100 bg-[#fff8ef] p-2">
           <button
             type="button"
-            className="ui-button ui-button-ghost h-10 px-3"
+            className="ui-button ui-button-ghost h-11 px-3"
             onClick={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, -1))}
           >
-            Previous
+            Previous day
           </button>
-          <p className="text-sm font-medium text-stone-800">{formattedSelectedDay}</p>
+          <p className="px-1 text-center text-sm font-medium leading-snug text-stone-800">{formattedSelectedDay}</p>
           <button
             type="button"
-            className="ui-button ui-button-ghost h-10 px-3"
+            className="ui-button ui-button-ghost h-11 px-3"
             onClick={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, 1))}
             disabled={isSelectedDayToday}
           >
-            Next
+            Next day
           </button>
         </div>
       </SummarySection>
