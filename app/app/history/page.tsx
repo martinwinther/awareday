@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { DailyFeedbackSections } from "../_components/daily-feedback-sections";
+import { SingleDayCalendarTimeline } from "../_components/single-day-calendar-timeline";
 import { StateNotice } from "../_components/state-notice";
 import { SummarySection } from "../_components/summary-section";
 import { deriveDailyActivityTotals } from "@/lib/firestore/derive-activity-totals";
 import { deriveDailyEventCounts } from "@/lib/firestore/derive-daily-event-counts";
+import { deriveSingleDayCalendarItems } from "@/lib/firestore/derive-single-day-calendar-items";
 import { deriveTodayTimeline } from "@/lib/firestore/derive-today-timeline";
 import type { ActivityEntry, EventEntry } from "@/lib/firestore/models";
 import { listActivityEntriesForDay, listEventEntriesForDay } from "@/lib/firestore/repositories";
@@ -117,6 +119,11 @@ export default function HistoryPage() {
     [activityEntries, eventEntries, selectedDay]
   );
 
+  const dayCalendarItems = useMemo(
+    () => deriveSingleDayCalendarItems(activityEntries, eventEntries, selectedDay),
+    [activityEntries, eventEntries, selectedDay],
+  );
+
   return (
     <div className="space-y-5">
       <SummarySection title="History">
@@ -147,6 +154,21 @@ export default function HistoryPage() {
           description={errorMessage}
         />
       ) : null}
+
+      <SummarySection title="Day schedule" tone="soft">
+        {isLoading ? (
+          <StateNotice
+            variant="loading"
+            title={`Loading day schedule for ${formattedSelectedDay}...`}
+            description="Placing activities and events on a vertical time grid."
+          />
+        ) : (
+          <SingleDayCalendarTimeline
+            activityBlocks={dayCalendarItems.activityBlocks}
+            eventMarkers={dayCalendarItems.eventMarkers}
+          />
+        )}
+      </SummarySection>
 
       <DailyFeedbackSections
         activityTotals={activityTotals}
