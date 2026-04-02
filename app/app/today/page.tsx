@@ -870,12 +870,12 @@ export default function TodayPage() {
               ) : (
                 <div className="space-y-2.5">
                   <p className="text-xs font-medium text-stone-500">Quick start</p>
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5">
+                  <div className="-mx-1 flex flex-wrap gap-2 px-1 pb-1.5">
                     {displayedActivityQuickLabels.map((label) => (
                       <button
                         key={label}
                         type="button"
-                        className="ui-chip h-11 shrink-0 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
+                        className="ui-chip h-11 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
                         onClick={() => void handleStartActivity(label)}
                         disabled={isMutatingActivity}
                       >
@@ -951,12 +951,12 @@ export default function TodayPage() {
               ) : (
                 <div className="space-y-2.5">
                   <p className="text-xs font-medium text-stone-500">Quick log</p>
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5">
+                  <div className="-mx-1 flex flex-wrap gap-2 px-1 pb-1.5">
                     {displayedEventQuickLabels.map((label) => (
                       <button
                         key={label}
                         type="button"
-                        className="ui-chip h-11 shrink-0 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
+                        className="ui-chip h-11 px-4 touch-manipulation border-amber-300 bg-[#fff2dc] shadow-[0_10px_16px_-15px_rgba(76,57,42,0.9)] active:translate-y-[0.5px]"
                         onClick={() => void handleLogEvent(label)}
                         disabled={isSubmitting}
                       >
