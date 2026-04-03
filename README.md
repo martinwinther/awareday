@@ -1,8 +1,9 @@
 # Awareday
 
-Awareday is a mobile-first web app for logging daily activities and one-off events with timestamps, so users can understand where their time goes and notice recurring habits.
+Awareday is a mobile app for logging daily activities and one-off events with timestamps, so users can understand where their time goes and notice recurring habits.
 
 ## MVP feature set
+
 - Firebase-authenticated app access
 - Activity logging as raw `start` / `end` timestamp entries
 - Event logging as one-off timestamp entries
@@ -14,122 +15,137 @@ Awareday is a mobile-first web app for logging daily activities and one-off even
 - Chronological daily timeline
 
 ## Product guardrails
+
 - Awareday is a timestamp logger, not a live timer-first app.
 - Activities and events are separate concepts.
 - Activity duration is always derived from raw entries.
 
 ## Tech stack
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
+
+- Expo (React Native)
+- TypeScript (strict mode)
+- Expo Router (file-based routing)
 - Firebase Authentication (Email/Password and Google)
 - Firestore
-- Vitest (unit tests for derivation helpers)
+- Vitest (unit tests for domain logic)
 
-## Repository layout
-- `app/` - Next.js routes and UI components
-- `src/lib/firebase/` - Firebase app/auth/firestore client setup
-- `src/lib/firestore/` - models, repositories, derivation helpers, tests
-- `firestore.rules` - Firestore security rules
-- `firebase.json` - Firebase rules deployment mapping
-- `docs/` - product/architecture guidance (gitignored but used in this repo)
+## Prerequisites
 
-## Routes
-- `/signin`
-- `/app`
-- `/app/today`
-- `/app/history`
-- `/app/settings`
+- Node.js 18+
+- [Expo CLI](https://docs.expo.dev/get-started/installation/) (`npx expo`)
+- iOS Simulator (macOS) or Android Emulator, or Expo Go on a physical device
 
-## Local setup
-Prerequisites:
-- Node.js 20+
-- npm
-- Firebase project with Authentication + Firestore enabled
+## Setup
 
-Install and run:
 ```bash
 npm install
-cp .env.example .env.local
-npm run dev
 ```
 
-Open `http://localhost:3000`.
+### Firebase configuration
 
-## Environment variables
-Fill `.env.local` with Firebase Web App config values from Firebase Console -> Project settings -> General -> Your apps.
+Add your Firebase config to `app.json` under `expo.extra`:
 
-Required:
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
+```json
+{
+  "expo": {
+    "extra": {
+      "firebaseApiKey": "your-api-key",
+      "firebaseAuthDomain": "your-project.firebaseapp.com",
+      "firebaseProjectId": "your-project-id",
+      "firebaseAppId": "your-app-id"
+    }
+  }
+}
+```
 
-Optional:
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+These are Firebase web client config values (public by design). Do not put server-only credentials here.
 
-These are web client config values (public by design) and should use the `NEXT_PUBLIC_` prefix.
-Never put server-only credentials (service account JSON, private keys, access tokens) in client env vars.
+For per-environment config, convert `app.json` to `app.config.ts` and read from environment variables.
 
-## Firebase and Firestore setup expectations
-For current app behavior, your Firebase project should have:
+## Running
+
+```bash
+npx expo start          # Start dev server
+npx expo start --ios    # Open in iOS Simulator
+npx expo start --android # Open in Android Emulator
+```
+
+Press `i` for iOS or `a` for Android in the terminal after starting.
+
+## Project structure
+
+```
+├── app/                        # Expo Router file-based routes
+│   ├── _layout.tsx             # Root layout (status bar, navigation stack)
+│   ├── sign-in.tsx             # Sign-in screen
+│   ├── +not-found.tsx          # 404 fallback
+│   └── (tabs)/                 # Bottom tab navigator
+│       ├── _layout.tsx         # Tab bar config
+│       ├── index.tsx           # Today (default tab)
+│       ├── history.tsx         # History
+│       └── settings.tsx        # Settings
+├── src/
+│   ├── lib/
+│   │   ├── domain/             # Pure domain logic
+│   │   │   ├── models.ts       # Domain types
+│   │   │   ├── normalize-label.ts
+│   │   │   ├── local-day.ts
+│   │   │   ├── derive-*.ts     # Derivation helpers
+│   │   │   ├── index.ts        # Barrel export
+│   │   │   └── *.test.ts       # Tests
+│   │   ├── firebase/           # Firebase init, auth hook, Firestore singleton
+│   │   └── firestore/          # Firestore paths and repositories
+│   ├── components/             # Shared React Native UI components
+│   └── theme/                  # Color palette, spacing, typography tokens
+├── assets/                     # Fonts, icons, splash images
+├── app.json                    # Expo configuration
+├── firebase.json               # Firebase rules deployment mapping
+├── firestore.rules             # Firestore security rules
+├── vitest.config.ts            # Test runner config
+├── package.json
+└── tsconfig.json
+```
+
+## Scripts
+
+```bash
+npm start           # Start Expo dev server
+npm run ios         # Start on iOS Simulator
+npm run android     # Start on Android Emulator
+npm run typecheck   # TypeScript type checking
+npm test            # Run tests
+npm run test:watch  # Run tests in watch mode
+```
+
+## Firebase and Firestore setup
+
+Your Firebase project should have:
 - Authentication enabled with `Email/Password` and `Google`
-- Authorized domains including `localhost` and your deployed site domain
+- Authorized domains including `localhost`
 - Firestore database created in the same project
 
-Current Firestore collections are per-user subcollections under `users/{userId}`:
+Firestore collections are per-user subcollections under `users/{userId}`:
 - `activityLabels`
 - `eventLabels`
 - `activityEntries`
 - `eventEntries`
 
-## Scripts
-```bash
-npm run dev
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-npm run verify
-```
-
-`npm run verify` runs `lint + typecheck + test + build` and is the recommended pre-deploy check.
-
 ## Firestore security rules
+
 Rules are defined in `firestore.rules` and wired in `firebase.json`.
 
 Deploy rules with Firebase CLI:
 ```bash
-firebase use <your-project-id>
-firebase deploy --only firestore:rules
-```
-
-Or with explicit project id:
-```bash
 firebase deploy --only firestore:rules --project <your-project-id>
 ```
 
-Rules currently enforce:
-- authenticated, per-user isolation (`request.auth.uid == userId`)
-- strict document shapes for labels and entries
-- immutable `userId` and `createdAt` on updates
-
-## Netlify deployment notes
-Set the same Firebase client env vars in Netlify Site settings -> Environment variables:
-- required: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`
-- optional: `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
-
-Set values for each active context you use (Production, Deploy Previews, Branch Deploys).
-After changing env vars, trigger a new deploy so Next.js rebuilds the client bundle with updated values.
-
-Before deploying:
-```bash
-npm run verify
-```
+Rules enforce:
+- Authenticated, per-user isolation (`request.auth.uid == userId`)
+- Strict document shapes for labels and entries
+- Immutable `userId` and `createdAt` on updates
 
 ## Secret safety
+
 - Do not commit `.env*` files with real values.
 - Do not commit service account files or private keys.
-- Treat credentials as blocking issues during review.
+- Firebase client config in `app.json` is public by design (same as web API keys).
