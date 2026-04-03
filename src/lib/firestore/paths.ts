@@ -4,8 +4,8 @@ import type {
   ActivityLabelDocument,
   EventEntryDocument,
   EventLabelDocument,
-} from "./models";
-import { getFirestoreDb } from "@/lib/firebase/firestore";
+} from "../domain/models";
+import { getFirestoreDb } from "../firebase/firestore";
 
 export type UserScopedCollectionName =
   | "activityLabels"
@@ -19,7 +19,7 @@ export function userDocumentPath(userId: string): string {
 
 export function userScopedCollectionPath(
   userId: string,
-  collectionName: UserScopedCollectionName
+  collectionName: UserScopedCollectionName,
 ): string {
   return `${userDocumentPath(userId)}/${collectionName}`;
 }
@@ -30,47 +30,48 @@ export function userDocumentRef(userId: string, db: Firestore = getFirestoreDb()
 
 export function activityLabelsCollectionRef(
   userId: string,
-  db: Firestore = getFirestoreDb()
+  db: Firestore = getFirestoreDb(),
 ): CollectionReference<ActivityLabelDocument> {
   return collection(
     db,
-    userScopedCollectionPath(userId, "activityLabels")
+    userScopedCollectionPath(userId, "activityLabels"),
   ) as CollectionReference<ActivityLabelDocument>;
 }
 
 export function eventLabelsCollectionRef(
   userId: string,
-  db: Firestore = getFirestoreDb()
+  db: Firestore = getFirestoreDb(),
 ): CollectionReference<EventLabelDocument> {
-  return collection(db, userScopedCollectionPath(userId, "eventLabels")) as CollectionReference<EventLabelDocument>;
+  return collection(
+    db,
+    userScopedCollectionPath(userId, "eventLabels"),
+  ) as CollectionReference<EventLabelDocument>;
 }
 
 export function activityEntriesCollectionRef(
   userId: string,
-  db: Firestore = getFirestoreDb()
+  db: Firestore = getFirestoreDb(),
 ): CollectionReference<ActivityEntryDocument> {
   return collection(
     db,
-    userScopedCollectionPath(userId, "activityEntries")
+    userScopedCollectionPath(userId, "activityEntries"),
   ) as CollectionReference<ActivityEntryDocument>;
 }
 
 export function eventEntriesCollectionRef(
   userId: string,
-  db: Firestore = getFirestoreDb()
+  db: Firestore = getFirestoreDb(),
 ): CollectionReference<EventEntryDocument> {
-  return collection(db, userScopedCollectionPath(userId, "eventEntries")) as CollectionReference<EventEntryDocument>;
+  return collection(
+    db,
+    userScopedCollectionPath(userId, "eventEntries"),
+  ) as CollectionReference<EventEntryDocument>;
 }
 
 function assertUserId(userId: string): string {
   const trimmed = userId.trim();
-
   if (trimmed.length === 0) {
     throw new Error("A valid user ID is required.");
   }
-
   return trimmed;
 }
-
-
-

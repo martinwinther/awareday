@@ -1,0 +1,10 @@
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+# SPA fallback — serve index.html for any unmatched route
+# so Expo Router can handle client-side navigation
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
