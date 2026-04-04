@@ -78,14 +78,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   title: {
-    fontSize: 23,
+    fontSize: 27,
     fontWeight: "700",
     color: colors.stone900,
+    fontFamily: "Georgia",
   },
   dateBadge: {
     borderWidth: 1,
     borderColor: colors.amber200,
-    backgroundColor: colors.backgroundSoft,
+    backgroundColor: colors.backgroundMuted,
     borderRadius: 9999,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 1,

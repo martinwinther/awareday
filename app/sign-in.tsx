@@ -83,14 +83,16 @@ export default function SignInScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.card}>
+        <View style={styles.heroTone} />
+
         <View style={styles.headerSection}>
-          <Text style={styles.brand}>AWAREDAY</Text>
-          <Text style={styles.title}>Sign in to log your day</Text>
-          <Text style={styles.subtitle}>Capture what started, what ended, and what happened in a clean daily timeline.</Text>
+          <Text style={styles.brand}>awareday</Text>
+          <Text style={styles.title}>See your day clearly.</Text>
+          <Text style={styles.subtitle}>Capture what started, what ended, and what happened without breaking your flow.</Text>
         </View>
 
         <View style={styles.features}>
-          {["Fast mobile-first logging", "Activity totals from timestamps", "Daily event counts and history"].map((text) => (
+          {["Fast thumb-first logging", "Activity time from real timestamps", "Daily event rhythm and timeline"].map((text) => (
             <View key={text} style={styles.featureChip}><Text style={styles.featureText}>{text}</Text></View>
           ))}
         </View>
@@ -130,7 +132,7 @@ export default function SignInScreen() {
           <Pressable style={[styles.primaryButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signin")} disabled={isDisabled}>
             <Text style={styles.primaryButtonText}>{isSubmitting ? "Signing in..." : "Sign in with email"}</Text>
           </Pressable>
-          <Pressable style={[styles.ghostButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signup")} disabled={isDisabled}>
+          <Pressable style={[styles.secondaryButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signup")} disabled={isDisabled}>
             <Text style={styles.ghostButtonText}>Create account with email</Text>
           </Pressable>
         </View>
@@ -145,7 +147,7 @@ export default function SignInScreen() {
           <Text style={styles.ghostButtonText}>{isSubmitting ? "Signing in..." : "Continue with Google"}</Text>
         </Pressable>
 
-        <Text style={styles.footnote}>Use email/password or Google to sign in for MVP.</Text>
+        <Text style={styles.footnote}>Pick email or Google to enter your private day log.</Text>
       </View>
     </ScrollView>
   );
@@ -155,32 +157,88 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.xl },
   card: {
-    backgroundColor: colors.backgroundCard, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.xl,
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: colors.backgroundCard,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    padding: spacing.xl,
+    gap: spacing.xl,
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
-      android: { elevation: 3 },
+      ios: { shadowColor: "rgba(63, 42, 26, 0.32)", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 1, shadowRadius: 24 },
+      android: { elevation: 5 },
     }),
   },
+  heroTone: {
+    position: "absolute",
+    top: -48,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: colors.amber100,
+    opacity: 0.65,
+  },
   headerSection: { gap: spacing.sm },
-  brand: { fontSize: fontSize.caption, fontWeight: "600", letterSpacing: 2, color: colors.stone500 },
-  title: { fontSize: fontSize["2xl"], fontWeight: "600", color: colors.stone900 },
+  brand: { fontSize: fontSize.caption, fontWeight: "700", letterSpacing: 1.7, color: colors.stone600, textTransform: "uppercase" },
+  title: { fontSize: 33, lineHeight: 36, fontWeight: "700", color: colors.stone900, fontFamily: "Georgia" },
   subtitle: { fontSize: fontSize.sm, color: colors.stone600, lineHeight: 20 },
   features: { gap: spacing.sm },
-  featureChip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber100, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  featureText: { fontSize: fontSize.sm, color: colors.stone600 },
+  featureChip: {
+    backgroundColor: colors.backgroundSoft,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  featureText: { fontSize: fontSize.sm, color: colors.stone700, fontWeight: "500" },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   errorText: { fontSize: fontSize.sm, color: colors.rose700 },
   formSection: { gap: spacing.md },
   fieldGroup: { gap: spacing.xs },
-  label: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone600 },
-  input: { borderWidth: 1, borderColor: colors.amber200, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 48, fontSize: fontSize.base, color: colors.stone900, backgroundColor: colors.backgroundLight },
-  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
+  label: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone600 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    height: 50,
+    fontSize: fontSize.base,
+    color: colors.stone900,
+    backgroundColor: colors.backgroundLight,
+  },
+  primaryButton: {
+    backgroundColor: colors.amber900,
+    borderRadius: radius.md,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   primaryButtonText: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
-  ghostButton: { borderWidth: 1, borderColor: colors.amber200, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
-  ghostButtonText: { color: colors.stone700, fontWeight: "500", fontSize: fontSize.sm },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.backgroundLight,
+  },
+  ghostButton: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.backgroundSoft,
+  },
+  ghostButtonText: { color: colors.stone700, fontWeight: "600", fontSize: fontSize.sm },
   disabled: { opacity: 0.5 },
   divider: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.amber200 },
-  dividerText: { fontSize: fontSize.xs, color: colors.stone400, textTransform: "uppercase", letterSpacing: 1 },
-  footnote: { fontSize: fontSize.xs, color: colors.stone500 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderAmber },
+  dividerText: { fontSize: fontSize.xs, color: colors.stone500, textTransform: "uppercase", letterSpacing: 1.2 },
+  footnote: { fontSize: fontSize.xs, color: colors.stone500, lineHeight: 18 },
 });

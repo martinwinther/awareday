@@ -46,3 +46,18 @@
 - Expo Router is the Expo team's recommended approach and is built on React Navigation.
 - File-based routing keeps the route structure visible in the directory layout.
 - Typed routes are enabled via `experiments.typedRoutes` in `app.json`.
+
+## 2026-04-04: Signature mobile UI pass for Today, Sign-in, and History
+
+**Decision:** Apply a focused design refinement to the three highest-impact surfaces with a warm editorial tone and stronger interaction hierarchy, while keeping all logging/auth/history behavior unchanged.
+
+**Why:**
+- These surfaces define first impression and daily repeat usage, so visual clarity and emotional tone directly affect retention.
+- The product direction calls for calm, mindful, mobile-first interactions that avoid generic component-library aesthetics.
+- A shared token and component refresh keeps implementation small while improving consistency across the app.
+
+**Consequences:**
+- Today now presents quick logging as a clearer staged interaction (activity lane + event lane).
+- Sign-in communicates value more clearly before auth actions.
+- History day schedule is easier to scan with a clearer time axis, dedicated event rail, and stronger day navigation hierarchy.
+- Future UI work should build on the updated palette and shared component primitives for consistency.

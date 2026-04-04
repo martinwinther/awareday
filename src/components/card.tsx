@@ -17,17 +17,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundCard,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.borderAmber,
     padding: spacing.lg,
     ...Platform.select({
       ios: {
-        shadowColor: "rgba(98, 75, 55, 0.25)",
-        shadowOffset: { width: 0, height: 6 },
+        shadowColor: "rgba(68, 44, 24, 0.28)",
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 1,
-        shadowRadius: 16,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 3,
+        elevation: 4,
       },
     }),
   },

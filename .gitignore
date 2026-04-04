@@ -40,6 +40,12 @@ yarn-error.*
 
 # IDE
 /.idea
+/.claude
+
+# Repo-local docs and agent guidance
+/docs
+AGENTS.md
+.impeccable.md
 
 # Netlify
 .netlify/

@@ -4,60 +4,60 @@
 
 export const colors = {
   // Primary warm sand background
-  background: "#f6ede1",
-  backgroundLight: "#fffcf9",
-  backgroundCard: "#ffffff",
-  backgroundSoft: "#fff8ef",
-  backgroundMuted: "#f2e9da",
+  background: "#f3e9dc",
+  backgroundLight: "#fcf7f0",
+  backgroundCard: "#fff8f0",
+  backgroundSoft: "#f8eddd",
+  backgroundMuted: "#ece0cf",
 
   // Amber accent scale
-  amber900: "#78451b",
-  amber800: "#92672f",
-  amber700: "#a67c52",
-  amber600: "#b8860b",
-  amber500: "#d97706",
-  amber300: "#d4a574",
-  amber200: "#e8cfa9",
-  amber100: "#f3e4cc",
+  amber900: "#6a3e1c",
+  amber800: "#865630",
+  amber700: "#9a6f48",
+  amber600: "#b07b33",
+  amber500: "#cb8d44",
+  amber300: "#cfab81",
+  amber200: "#e4ccb0",
+  amber100: "#f2e3d0",
 
   // Stone neutrals
-  stone900: "#1c1917",
-  stone800: "#292524",
-  stone700: "#44403c",
-  stone600: "#57534e",
-  stone500: "#78716c",
-  stone400: "#a8a29e",
+  stone900: "#261d18",
+  stone800: "#342923",
+  stone700: "#4a3d35",
+  stone600: "#615148",
+  stone500: "#827166",
+  stone400: "#aa9a8f",
 
   // Semantic: activity states
-  emerald600: "#059669",
-  emerald50: "#ecfdf5",
+  emerald600: "#2b8b64",
+  emerald50: "#e9f5ee",
 
   // Semantic: events
-  indigo600: "#4f46e5",
-  indigo50: "#eef2ff",
+  indigo600: "#5a5ac8",
+  indigo50: "#eeefff",
 
   // Semantic: errors
-  rose700: "#be123c",
-  rose200: "#fecdd3",
-  rose50: "#fff1f2",
+  rose700: "#b24a5f",
+  rose200: "#f2c8cf",
+  rose50: "#faecee",
 
   // Semantic: warnings
-  orange700: "#c2410c",
+  orange700: "#b45a2b",
 
   // Borders and dividers
-  borderLight: "rgba(243, 228, 204, 0.6)",
-  borderAmber: "rgba(232, 207, 169, 0.8)",
-  divider: "rgba(232, 207, 169, 0.5)",
+  borderLight: "rgba(228, 204, 176, 0.64)",
+  borderAmber: "rgba(214, 179, 137, 0.8)",
+  divider: "rgba(214, 179, 137, 0.48)",
 
   // Tab bar
-  tabBarBackground: "#fffaf2",
-  tabBarBorder: "rgba(232, 207, 169, 0.8)",
+  tabBarBackground: "#faf0e4",
+  tabBarBorder: "rgba(214, 179, 137, 0.82)",
   tabInactive: "#78716c",
   tabActive: "#1c1917",
-  tabIndicatorActive: "#b8860b",
-  tabIndicatorInactive: "#d4a574",
+  tabIndicatorActive: "#b07b33",
+  tabIndicatorInactive: "#cfab81",
 
   // Transparent overlays
-  white: "#ffffff",
+  white: "#fff8f1",
   transparent: "transparent",
 } as const;

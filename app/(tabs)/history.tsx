@@ -74,6 +74,10 @@ function DaySchedule({
   eventMarkers: DayViewEventMarker[];
 }) {
   const hasEntries = activityBlocks.length > 0 || eventMarkers.length > 0;
+  const leftAxisWidth = 64;
+  const rightEventRailWidth = 106;
+  const minBlockHeight = 22;
+  const activityCanvasWidth = 188;
 
   const hours = useMemo(() => {
     if (!hasEntries) return [9, 10, 11, 12];
@@ -96,19 +100,19 @@ function DaySchedule({
 
   if (!hasEntries) {
     return (
-      <View style={styles.timelinePreview}>
+      <View style={styles.timelinePreviewEmpty}>
         {hours.map((hour) => {
           const label = new Date(2000, 0, 1, hour).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
           return (
-            <View key={hour} style={styles.timelineHour}>
+            <View key={hour} style={styles.timelineHourEmpty}>
               <Text style={styles.timelineHourText}>{label}</Text>
               <View style={styles.timelineLine} />
             </View>
           );
         })}
-        <View style={styles.emptyNotice}>
+        <View style={styles.emptyNoticeBox}>
           <Text style={styles.emptyText}>No entries for this day yet.</Text>
-          <Text style={styles.emptyDescription}>Activity blocks and event markers will appear here.</Text>
+          <Text style={styles.emptyDescription}>Activity blocks and event markers appear here once you log that day.</Text>
         </View>
       </View>
     );
@@ -117,7 +121,7 @@ function DaySchedule({
   const firstHour = hours[0];
   const lastHour = hours[hours.length - 1];
   const totalMinutes = (lastHour - firstHour + 1) * 60;
-  const hourHeight = 44;
+  const hourHeight = 48;
   const totalHeight = hours.length * hourHeight;
 
   return (
@@ -132,14 +136,24 @@ function DaySchedule({
           </View>
         );
       })}
+
+      <View
+        style={[
+          styles.activityCanvas,
+          {
+            left: leftAxisWidth + spacing.sm,
+            right: rightEventRailWidth,
+            width: activityCanvasWidth,
+            height: totalHeight,
+          },
+        ]}
+      >
       {activityBlocks.map((block, idx) => {
-        const startMin = (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes();
-        const endMin = (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes();
-        const top = (startMin / totalMinutes) * totalHeight;
-        const height = Math.max(((endMin - startMin) / totalMinutes) * totalHeight, 20);
-        const laneWidth = 1 / block.laneCount;
-        const left = 72 + (block.laneIndex * laneWidth) * (totalHeight > 0 ? 200 : 100);
-        const width = laneWidth * block.laneSpan * 200;
+        const top = (block.topPercent / 100) * totalHeight;
+        const height = Math.max((block.heightPercent / 100) * totalHeight, minBlockHeight);
+        const laneWidthPx = activityCanvasWidth / block.laneCount;
+        const left = block.laneIndex * laneWidthPx;
+        const width = Math.max((block.laneSpan * laneWidthPx) - 2, 14);
         return (
           <View
             key={block.id}
@@ -147,42 +161,60 @@ function DaySchedule({
               position: "absolute",
               top,
               left,
-              width: Math.min(width, 200),
+              width,
               height,
               backgroundColor: getActivityColor(idx),
-              opacity: 0.25,
+              opacity: 0.3,
               borderRadius: radius.sm,
               paddingHorizontal: spacing.xs,
               paddingVertical: 2,
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: fontSize.caption, color: colors.stone800, fontWeight: "500" }} numberOfLines={1}>
+            <Text style={{ fontSize: fontSize.caption, color: colors.stone900, fontWeight: "600" }} numberOfLines={1}>
               {block.label}
             </Text>
           </View>
         );
       })}
+      </View>
+
+      <View
+        style={[
+          styles.eventRail,
+          {
+            right: spacing.xs,
+            width: rightEventRailWidth - spacing.xs,
+            height: totalHeight,
+          },
+        ]}
+      >
       {eventMarkers.map((marker) => {
-        const min = (marker.timestamp.getHours() - firstHour) * 60 + marker.timestamp.getMinutes();
-        const top = (min / totalMinutes) * totalHeight;
+        const top = (marker.topPercent / 100) * totalHeight;
+        const offset = marker.stackIndex * 18;
         return (
           <View
             key={marker.id}
             style={{
               position: "absolute",
-              top: top - 3,
+              top: top - 5 + offset,
+              left: 0,
               right: 0,
               flexDirection: "row",
               alignItems: "center",
               gap: spacing.xs,
             }}
           >
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.indigo600 }} />
-            <Text style={{ fontSize: fontSize.caption, color: colors.indigo600, fontWeight: "500" }}>{marker.label}</Text>
+            <View style={styles.eventConnector} />
+            <View style={styles.eventDot} />
+            <View style={styles.eventPill}>
+              <Text style={styles.eventPillTime}>{formatClockTime(marker.timestamp)}</Text>
+              <Text style={styles.eventPillText} numberOfLines={1}>{marker.label}</Text>
+            </View>
           </View>
         );
       })}
+      </View>
     </View>
   );
 }
@@ -394,44 +426,99 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: colors.backgroundSoft,
+    backgroundColor: colors.backgroundMuted,
     borderWidth: 1,
-    borderColor: colors.amber100,
+    borderColor: colors.borderAmber,
     borderRadius: radius.xl,
     padding: spacing.sm,
   },
   dayButton: {
     borderWidth: 1,
     borderColor: colors.borderAmber,
-    backgroundColor: "#fffbf7",
+    backgroundColor: colors.backgroundLight,
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm + 3,
   },
   dayButtonDisabled: { opacity: 0.45 },
   dayButtonText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone700 },
   dayButtonTextDisabled: { color: colors.stone400 },
-  dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.sm, fontWeight: "600", color: colors.stone800 },
+  dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.sm, fontWeight: "700", color: colors.stone800 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
   errorText: { fontSize: fontSize.xs, color: colors.rose700 },
   loadingContainer: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { fontSize: fontSize.sm, color: colors.stone500 },
-  timelinePreview: { gap: 0 },
-  timelineHour: { flexDirection: "row", alignItems: "center", height: 44, gap: spacing.sm },
+  timelinePreviewEmpty: { gap: 0 },
+  timelineHourEmpty: { flexDirection: "row", alignItems: "center", height: 44, gap: spacing.sm },
+  timelinePreview: {
+    position: "relative",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    backgroundColor: colors.backgroundLight,
+    paddingTop: spacing.sm,
+  },
+  timelineHour: { flexDirection: "row", alignItems: "center", height: 48, gap: spacing.sm },
   timelineHourText: { width: 60, fontSize: fontSize.caption, fontWeight: "500", color: colors.stone500, textAlign: "right" },
   timelineLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
-  emptyNotice: {
+  emptyNoticeBox: {
     marginTop: spacing.md,
-    backgroundColor: "#fffaf3",
+    backgroundColor: colors.backgroundSoft,
     borderWidth: 1,
-    borderColor: "rgba(232, 207, 169, 0.9)",
+    borderColor: colors.borderAmber,
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.xs,
   },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
   emptyDescription: { fontSize: fontSize.xs, color: colors.stone500, lineHeight: 18 },
+  activityCanvas: {
+    position: "absolute",
+    top: spacing.sm,
+    bottom: 0,
+  },
+  eventRail: {
+    position: "absolute",
+    top: spacing.sm,
+    bottom: 0,
+  },
+  eventConnector: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
+  },
+  eventDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.indigo600,
+  },
+  eventPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.indigo50,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.indigo600,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    maxWidth: 90,
+  },
+  eventPillTime: {
+    fontSize: fontSize.caption,
+    color: colors.indigo600,
+    fontWeight: "700",
+  },
+  eventPillText: {
+    flex: 1,
+    fontSize: fontSize.caption,
+    color: colors.indigo600,
+    fontWeight: "600",
+  },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
   totalLabel: { fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },

@@ -213,86 +213,94 @@ export default function TodayScreen() {
         <View style={s.errorBox}><Text style={s.errorText}>{errorMessage}</Text></View>
       ) : null}
 
-      {/* Activity quick log */}
-      <Card>
-        <View style={s.sectionHeader}>
-          <SectionLabel>Activity</SectionLabel>
-          <View style={s.badge}><Text style={s.badgeText}>{openActivitiesToday.length} open</Text></View>
+      <View style={s.quickStage}>
+        <View style={s.quickStageHeader}>
+          <SectionLabel>Quick log</SectionLabel>
+          <Text style={s.quickStageHint}>Capture now. Refine later.</Text>
         </View>
-        <TextInput
-          style={s.input}
-          placeholder="Type an activity label"
-          placeholderTextColor={colors.stone400}
-          value={activityLabelInput}
-          onChangeText={setActivityLabelInput}
-          editable={!isMutatingActivity}
-        />
-        <View style={s.buttonRow}>
-          <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
-            <Text style={s.buttonTextWhite}>{isStartingActivity ? "Starting..." : "Start"}</Text>
-          </Pressable>
-          <Pressable
-            style={[s.endButton, (isMutatingActivity || openActivitiesToday.length === 0) && s.disabled]}
-            onPress={() => {
-              const label = activityLabelInput.trim();
-              if (label.length > 0) {
-                const match = openActivitiesToday.find((e) => e.normalizedLabel === normalizeLabelName(label));
-                if (match) void handleEndActivity(match);
-                else setErrorMessage(`No open activity found for "${label}".`);
-              } else if (openActivitiesToday.length > 0) {
-                void handleEndActivity(openActivitiesToday[0]);
-              }
-            }}
-            disabled={isMutatingActivity || openActivitiesToday.length === 0}
-          >
-            <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End"}</Text>
-          </Pressable>
-        </View>
-        {activityQuickLabels === null ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : (
-          <View>
-            <Text style={s.chipLabel}>Quick start</Text>
-            <View style={s.chipRow}>
-              {displayedActivityLabels.map((label) => (
-                <Pressable key={label} style={[s.chip, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(label)} disabled={isMutatingActivity}>
-                  <Text style={s.chipText}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-      </Card>
 
-      {/* Event quick log */}
-      <Card>
-        <SectionLabel>Event</SectionLabel>
-        <TextInput
-          style={s.input}
-          placeholder="Type an event label"
-          placeholderTextColor={colors.stone400}
-          value={eventLabelInput}
-          onChangeText={setEventLabelInput}
-          editable={!isSubmittingEvent}
-        />
-        <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
-          <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log event"}</Text>
-        </Pressable>
-        {eventQuickLabels === null ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : (
-          <View>
-            <Text style={s.chipLabel}>Quick log</Text>
-            <View style={s.chipRow}>
-              {displayedEventLabels.map((label) => (
-                <Pressable key={label} style={[s.chip, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(label)} disabled={isSubmittingEvent}>
-                  <Text style={s.chipText}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
+        {/* Activity quick log */}
+        <Card style={s.quickLaneCard}>
+          <View style={s.sectionHeader}>
+            <SectionLabel>Activity lane</SectionLabel>
+            <View style={s.badge}><Text style={s.badgeText}>{openActivitiesToday.length} open</Text></View>
           </View>
-        )}
-      </Card>
+          <TextInput
+            style={s.input}
+            placeholder="What are you starting or ending?"
+            placeholderTextColor={colors.stone400}
+            value={activityLabelInput}
+            onChangeText={setActivityLabelInput}
+            editable={!isMutatingActivity}
+          />
+          <View style={s.buttonRow}>
+            <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
+              <Text style={s.buttonTextWhite}>{isStartingActivity ? "Starting..." : "Start activity"}</Text>
+            </Pressable>
+            <Pressable
+              style={[s.endButton, (isMutatingActivity || openActivitiesToday.length === 0) && s.disabled]}
+              onPress={() => {
+                const label = activityLabelInput.trim();
+                if (label.length > 0) {
+                  const match = openActivitiesToday.find((e) => e.normalizedLabel === normalizeLabelName(label));
+                  if (match) void handleEndActivity(match);
+                  else setErrorMessage(`No open activity found for "${label}".`);
+                } else if (openActivitiesToday.length > 0) {
+                  void handleEndActivity(openActivitiesToday[0]);
+                }
+              }}
+              disabled={isMutatingActivity || openActivitiesToday.length === 0}
+            >
+              <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
+            </Pressable>
+          </View>
+          <Text style={s.helperText}>Leave input empty to end the most recent open activity.</Text>
+          {activityQuickLabels === null ? (
+            <ActivityIndicator color={colors.amber600} />
+          ) : (
+            <View>
+              <Text style={s.chipLabel}>Quick start</Text>
+              <View style={s.chipRow}>
+                {displayedActivityLabels.map((label) => (
+                  <Pressable key={label} style={[s.chip, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(label)} disabled={isMutatingActivity}>
+                    <Text style={s.chipText}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+        </Card>
+
+        {/* Event quick log */}
+        <Card style={s.quickLaneCard}>
+          <SectionLabel>Event lane</SectionLabel>
+          <TextInput
+            style={s.input}
+            placeholder="What happened right now?"
+            placeholderTextColor={colors.stone400}
+            value={eventLabelInput}
+            onChangeText={setEventLabelInput}
+            editable={!isSubmittingEvent}
+          />
+          <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
+            <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log event"}</Text>
+          </Pressable>
+          {eventQuickLabels === null ? (
+            <ActivityIndicator color={colors.amber600} />
+          ) : (
+            <View>
+              <Text style={s.chipLabel}>Quick log</Text>
+              <View style={s.chipRow}>
+                {displayedEventLabels.map((label) => (
+                  <Pressable key={label} style={[s.chip, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(label)} disabled={isSubmittingEvent}>
+                    <Text style={s.chipText}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+        </Card>
+      </View>
 
       {/* Open activities */}
       <Card>
@@ -395,23 +403,56 @@ const s = StyleSheet.create({
   successText: { fontSize: fontSize.sm, color: colors.emerald600, fontWeight: "500" },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md },
   errorText: { fontSize: fontSize.sm, color: colors.rose700 },
+  quickStage: {
+    backgroundColor: colors.backgroundMuted,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  quickStageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  quickStageHint: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+    fontWeight: "500",
+  },
+  quickLaneCard: {
+    backgroundColor: colors.backgroundCard,
+  },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  badge: { backgroundColor: colors.amber100, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 },
-  badgeText: { fontSize: fontSize.caption, fontWeight: "500", color: colors.stone600 },
-  input: { borderWidth: 1, borderColor: colors.amber200, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 48, fontSize: fontSize.base, color: colors.stone900, backgroundColor: colors.backgroundLight },
+  badge: { backgroundColor: colors.backgroundMuted, borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: 2, borderWidth: 1, borderColor: colors.borderAmber },
+  badgeText: { fontSize: fontSize.caption, fontWeight: "600", color: colors.stone600 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    height: 50,
+    fontSize: fontSize.base,
+    color: colors.stone900,
+    backgroundColor: colors.backgroundLight,
+  },
   buttonRow: { flexDirection: "row", gap: spacing.sm },
-  startButton: { flex: 1, backgroundColor: colors.emerald600, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
-  endButton: { flex: 1, backgroundColor: colors.orange700, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
-  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
+  startButton: { flex: 1, backgroundColor: colors.emerald600, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
+  endButton: { flex: 1, backgroundColor: colors.orange700, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
+  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
   buttonTextWhite: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
   disabled: { opacity: 0.45 },
-  chipLabel: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone500, marginBottom: spacing.sm },
+  helperText: { fontSize: fontSize.xs, color: colors.stone500, marginTop: -2 },
+  chipLabel: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone500, marginBottom: spacing.sm },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber300, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  chipText: { fontSize: fontSize.sm, color: colors.stone700, fontWeight: "500" },
+  chipText: { fontSize: fontSize.sm, color: colors.stone700, fontWeight: "600" },
   countText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone600 },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
-  openActivityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.backgroundSoft, borderRadius: radius.md, padding: spacing.md },
+  openActivityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.backgroundSoft, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
   openActivityInfo: { flex: 1, gap: 2 },
   openActivityLabel: { fontSize: fontSize.sm, fontWeight: "600", color: colors.stone900 },
   openActivityTime: { fontSize: fontSize.xs, color: colors.stone500 },
