@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform } from "react-native";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
-import { ScreenHeader } from "@/src/components/screen-header";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
@@ -14,16 +14,13 @@ import {
   formatDuration,
   type ActivityEntry,
   type EventEntry,
-  type TodayTimelineItem,
   type DayViewActivityBlock,
   type DayViewEventMarker,
 } from "@/src/lib/domain";
-import {
-  listActivityEntriesForDay,
-  listEventEntriesForDay,
-} from "@/src/lib/firestore/repositories";
+import { listActivityEntriesForDay, listEventEntriesForDay } from "@/src/lib/firestore/repositories";
 import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize } from "@/src/theme/spacing";
+import { spacing, radius, fontSize, controlSize } from "@/src/theme/spacing";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getStartOfDay(day: Date): Date {
   const start = new Date(day);
@@ -66,6 +63,131 @@ function getActivityColor(index: number): string {
   return ACTIVITY_COLORS[index % ACTIVITY_COLORS.length];
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const value = hex.replace("#", "");
+  const normalized = value.length === 3
+    ? value.split("").map((char) => `${char}${char}`).join("")
+    : value;
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+type DisplaySeed = {
+  id: string;
+  startMinute: number;
+  endMinute: number;
+};
+
+type DisplayLanePlacement = {
+  laneIndex: number;
+  laneCount: number;
+  laneSpan: number;
+};
+
+function seedsOverlap(left: DisplaySeed, right: DisplaySeed): boolean {
+  return left.startMinute < right.endMinute && right.startMinute < left.endMinute;
+}
+
+function buildDisplayLaneMap(
+  blocks: DayViewActivityBlock[],
+  firstHour: number,
+): Map<string, DisplayLanePlacement> {
+  const seeds: DisplaySeed[] = blocks
+    .map((block) => ({
+      id: block.id,
+      startMinute: (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes(),
+      endMinute: (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes(),
+    }))
+    .sort((left, right) => {
+      if (left.startMinute !== right.startMinute) {
+        return left.startMinute - right.startMinute;
+      }
+
+      return left.endMinute - right.endMinute;
+    });
+
+  const clusters: DisplaySeed[][] = [];
+  let currentCluster: DisplaySeed[] = [];
+  let clusterEndMinute = -1;
+
+  for (const seed of seeds) {
+    if (currentCluster.length === 0 || seed.startMinute < clusterEndMinute) {
+      currentCluster.push(seed);
+      clusterEndMinute = Math.max(clusterEndMinute, seed.endMinute);
+      continue;
+    }
+
+    clusters.push(currentCluster);
+    currentCluster = [seed];
+    clusterEndMinute = seed.endMinute;
+  }
+
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  const laneMap = new Map<string, DisplayLanePlacement>();
+
+  for (const cluster of clusters) {
+    const laneEndMinutes: number[] = [];
+    const laneById = new Map<string, number>();
+    const itemsByLane = new Map<number, DisplaySeed[]>();
+
+    for (const seed of cluster) {
+      let laneIndex = -1;
+
+      for (let lane = 0; lane < laneEndMinutes.length; lane += 1) {
+        if (laneEndMinutes[lane] <= seed.startMinute) {
+          laneIndex = lane;
+          break;
+        }
+      }
+
+      if (laneIndex === -1) {
+        laneIndex = laneEndMinutes.length;
+        laneEndMinutes.push(seed.endMinute);
+      } else {
+        laneEndMinutes[laneIndex] = seed.endMinute;
+      }
+
+      laneById.set(seed.id, laneIndex);
+      const laneItems = itemsByLane.get(laneIndex) ?? [];
+      laneItems.push(seed);
+      itemsByLane.set(laneIndex, laneItems);
+    }
+
+    const laneCount = Math.max(laneEndMinutes.length, 1);
+
+    for (const seed of cluster) {
+      const laneIndex = laneById.get(seed.id) ?? 0;
+      let laneSpan = 1;
+
+      for (let lane = laneIndex + 1; lane < laneCount; lane += 1) {
+        const laneItems = itemsByLane.get(lane) ?? [];
+        const hasConflict = laneItems.some((laneItem) => seedsOverlap(seed, laneItem));
+
+        if (hasConflict) {
+          break;
+        }
+
+        laneSpan += 1;
+      }
+
+      laneMap.set(seed.id, {
+        laneIndex,
+        laneCount,
+        laneSpan,
+      });
+    }
+  }
+
+  return laneMap;
+}
+
 function DaySchedule({
   activityBlocks,
   eventMarkers,
@@ -76,27 +198,44 @@ function DaySchedule({
   const hasEntries = activityBlocks.length > 0 || eventMarkers.length > 0;
   const leftAxisWidth = 64;
   const rightEventRailWidth = 106;
-  const minBlockHeight = 22;
-  const activityCanvasWidth = 188;
+  const minBlockHeight = 16;
+  const laneGap = 3;
+  const [scheduleWidth, setScheduleWidth] = useState(0);
 
   const hours = useMemo(() => {
     if (!hasEntries) return [9, 10, 11, 12];
+
     const allHours = new Set<number>();
+
     for (const block of activityBlocks) {
       const startHour = block.startTimestamp.getHours();
       const endHour = block.endTimestamp.getHours();
-      for (let h = startHour; h <= endHour; h++) allHours.add(h);
+      for (let hour = startHour; hour <= endHour; hour += 1) {
+        allHours.add(hour);
+      }
     }
+
     for (const marker of eventMarkers) {
       allHours.add(marker.timestamp.getHours());
     }
-    const sorted = Array.from(allHours).sort((a, b) => a - b);
-    const first = Math.max(0, sorted[0] - 1);
-    const last = Math.min(23, sorted[sorted.length - 1] + 1);
+
+    const sorted = Array.from(allHours).sort((left, right) => left - right);
+    const first = Math.max(0, (sorted[0] ?? 9) - 1);
+    const last = Math.min(23, (sorted[sorted.length - 1] ?? 12) + 1);
     const result: number[] = [];
-    for (let h = first; h <= last; h++) result.push(h);
+
+    for (let hour = first; hour <= last; hour += 1) {
+      result.push(hour);
+    }
+
     return result;
   }, [activityBlocks, eventMarkers, hasEntries]);
+
+  const firstHour = hours[0] ?? 0;
+  const displayLaneMap = useMemo(
+    () => buildDisplayLaneMap(activityBlocks, firstHour),
+    [activityBlocks, firstHour],
+  );
 
   if (!hasEntries) {
     return (
@@ -118,17 +257,26 @@ function DaySchedule({
     );
   }
 
-  const firstHour = hours[0];
-  const lastHour = hours[hours.length - 1];
+  const lastHour = hours[hours.length - 1] ?? firstHour;
   const totalMinutes = (lastHour - firstHour + 1) * 60;
   const hourHeight = 48;
   const totalHeight = hours.length * hourHeight;
+  const activityCanvasWidth = Math.max(
+    scheduleWidth - leftAxisWidth - rightEventRailWidth - spacing.lg,
+    180,
+  );
 
   return (
-    <View style={[styles.timelinePreview, { height: totalHeight + spacing.md }]}>
+    <View
+      style={[styles.timelinePreview, { height: totalHeight + spacing.md }]}
+      onLayout={(event) => {
+        setScheduleWidth(event.nativeEvent.layout.width);
+      }}
+    >
       {hours.map((hour) => {
         const label = new Date(2000, 0, 1, hour).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
         const top = ((hour - firstHour) * 60 / totalMinutes) * totalHeight;
+
         return (
           <View key={hour} style={[styles.timelineHour, { position: "absolute", top, left: 0, right: 0 }]}>
             <Text style={styles.timelineHourText}>{label}</Text>
@@ -142,41 +290,63 @@ function DaySchedule({
           styles.activityCanvas,
           {
             left: leftAxisWidth + spacing.sm,
-            right: rightEventRailWidth,
             width: activityCanvasWidth,
             height: totalHeight,
           },
         ]}
       >
-      {activityBlocks.map((block, idx) => {
-        const top = (block.topPercent / 100) * totalHeight;
-        const height = Math.max((block.heightPercent / 100) * totalHeight, minBlockHeight);
-        const laneWidthPx = activityCanvasWidth / block.laneCount;
-        const left = block.laneIndex * laneWidthPx;
-        const width = Math.max((block.laneSpan * laneWidthPx) - 2, 14);
-        return (
-          <View
-            key={block.id}
-            style={{
-              position: "absolute",
-              top,
-              left,
-              width,
-              height,
-              backgroundColor: getActivityColor(idx),
-              opacity: 0.3,
-              borderRadius: radius.sm,
-              paddingHorizontal: spacing.xs,
-              paddingVertical: 2,
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: fontSize.caption, color: colors.stone900, fontWeight: "600" }} numberOfLines={1}>
-              {block.label}
-            </Text>
-          </View>
-        );
-      })}
+        {activityBlocks.map((block, idx) => {
+          const startMinute = (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes();
+          const endMinute = (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes();
+          const placement = displayLaneMap.get(block.id) ?? { laneIndex: 0, laneCount: 1, laneSpan: 1 };
+
+          const top = (startMinute / totalMinutes) * totalHeight + 1;
+          const height = Math.max(((endMinute - startMinute) / totalMinutes) * totalHeight - 2, minBlockHeight);
+          const laneWidthPx = activityCanvasWidth / placement.laneCount;
+          const left = placement.laneIndex * laneWidthPx + laneGap / 2;
+          const width = Math.max((laneWidthPx * placement.laneSpan) - laneGap, 14);
+
+          const baseColor = getActivityColor(idx);
+          const hasRoomForText = width >= 62;
+          const hasRoomForCompact = width >= 34;
+          const showStandardLabel = height >= 18 && hasRoomForText;
+          const showCompactLabel = !showStandardLabel && height >= 13 && hasRoomForCompact;
+          const compactLabel = width < 56
+            ? block.label.slice(0, 2).toUpperCase()
+            : `${block.label.slice(0, 14)}${block.label.length > 14 ? "..." : ""}`;
+
+          return (
+            <View
+              key={block.id}
+              style={{
+                position: "absolute",
+                top,
+                left,
+                width,
+                height,
+                backgroundColor: hexToRgba(baseColor, 0.24),
+                borderColor: hexToRgba(baseColor, 0.9),
+                borderWidth: 1,
+                borderRadius: radius.sm,
+                paddingHorizontal: spacing.xs,
+                paddingVertical: height < 18 ? 1 : 2,
+                justifyContent: "center",
+              }}
+            >
+              {showStandardLabel ? (
+                <Text style={{ fontSize: fontSize.caption, color: colors.stone900, fontWeight: "600" }} numberOfLines={1}>
+                  {block.label}
+                </Text>
+              ) : showCompactLabel ? (
+                <Text style={{ fontSize: 10, color: colors.stone900, fontWeight: "700" }} numberOfLines={1}>
+                  {compactLabel}
+                </Text>
+              ) : (
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: hexToRgba(baseColor, 0.95) }} />
+              )}
+            </View>
+          );
+        })}
       </View>
 
       <View
@@ -189,37 +359,40 @@ function DaySchedule({
           },
         ]}
       >
-      {eventMarkers.map((marker) => {
-        const top = (marker.topPercent / 100) * totalHeight;
-        const offset = marker.stackIndex * 18;
-        return (
-          <View
-            key={marker.id}
-            style={{
-              position: "absolute",
-              top: top - 5 + offset,
-              left: 0,
-              right: 0,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: spacing.xs,
-            }}
-          >
-            <View style={styles.eventConnector} />
-            <View style={styles.eventDot} />
-            <View style={styles.eventPill}>
-              <Text style={styles.eventPillTime}>{formatClockTime(marker.timestamp)}</Text>
-              <Text style={styles.eventPillText} numberOfLines={1}>{marker.label}</Text>
+        {eventMarkers.map((marker) => {
+          const minute = (marker.timestamp.getHours() - firstHour) * 60 + marker.timestamp.getMinutes();
+          const top = (minute / totalMinutes) * totalHeight;
+          const offset = marker.stackIndex * 14;
+
+          return (
+            <View
+              key={marker.id}
+              style={{
+                position: "absolute",
+                top: top - 5 + offset,
+                left: 0,
+                right: 0,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.xs,
+              }}
+            >
+              <View style={styles.eventConnector} />
+              <View style={styles.eventDot} />
+              <View style={styles.eventPill}>
+                <Text style={styles.eventPillTime}>{formatClockTime(marker.timestamp)}</Text>
+                <Text style={styles.eventPillText} numberOfLines={1}>{marker.label}</Text>
+              </View>
             </View>
-          </View>
-        );
-      })}
+          );
+        })}
       </View>
     </View>
   );
 }
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthUser();
   const [selectedDay, setSelectedDay] = useState(() => getStartOfDay(new Date()));
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -250,12 +423,16 @@ export default function HistoryScreen() {
           listEventEntriesForDay(user.uid, selectedDay),
         ]);
 
-        if (!isActive) return;
+        if (!isActive) {
+          return;
+        }
 
         setActivityEntries(loadedActivities);
         setEventEntries(loadedEvents);
       } catch (error) {
-        if (!isActive) return;
+        if (!isActive) {
+          return;
+        }
 
         if (error instanceof FirebaseError) {
           setErrorMessage(error.message);
@@ -263,7 +440,9 @@ export default function HistoryScreen() {
           setErrorMessage("Could not load history for this day. Please try again.");
         }
       } finally {
-        if (isActive) setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -296,29 +475,34 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="History" subtitle="Review any day in a calm timeline." />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
         showsVerticalScrollIndicator={false}
       >
-        <Card>
+        <Card style={styles.slimTopCard}>
           <View style={styles.section}>
             <SectionLabel>History</SectionLabel>
             <View style={styles.dayPicker}>
               <Pressable
                 style={styles.dayButton}
-                onPress={() => setSelectedDay((prev) => shiftLocalDay(prev, -1))}
+                onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, -1))}
+                accessibilityLabel="Previous day"
               >
-                <Text style={styles.dayButtonText}>Previous</Text>
+                <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
               </Pressable>
               <Text style={styles.dayLabel}>{formattedSelectedDay}</Text>
               <Pressable
                 style={[styles.dayButton, isSelectedDayToday && styles.dayButtonDisabled]}
-                onPress={() => setSelectedDay((prev) => shiftLocalDay(prev, 1))}
+                onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, 1))}
                 disabled={isSelectedDayToday}
+                accessibilityLabel="Next day"
               >
-                <Text style={[styles.dayButtonText, isSelectedDayToday && styles.dayButtonTextDisabled]}>Next</Text>
+                <FontAwesome
+                  name="chevron-right"
+                  size={12}
+                  color={isSelectedDayToday ? colors.stone400 : colors.stone700}
+                />
               </Pressable>
             </View>
           </View>
@@ -349,38 +533,40 @@ export default function HistoryScreen() {
         </Card>
 
         <Card>
-          <View style={styles.section}>
-            <SectionLabel>Activity totals</SectionLabel>
-            {isLoading ? (
-              <ActivityIndicator color={colors.amber600} />
-            ) : activityTotals.length === 0 ? (
-              <Text style={styles.emptyText}>No completed activities on {formattedSelectedDay}.</Text>
-            ) : (
-              activityTotals.map((total) => (
-                <View key={total.normalizedLabel} style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>{total.label}</Text>
-                  <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
-                </View>
-              ))
-            )}
-          </View>
-        </Card>
+          <View style={styles.summaryGroup}>
+            <View style={styles.summarySection}>
+              <SectionLabel>Activity totals</SectionLabel>
+              {isLoading ? (
+                <ActivityIndicator color={colors.amber600} />
+              ) : activityTotals.length === 0 ? (
+                <Text style={styles.emptyText}>No completed activities on {formattedSelectedDay}.</Text>
+              ) : (
+                activityTotals.map((total) => (
+                  <View key={total.normalizedLabel} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>{total.label}</Text>
+                    <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
+                  </View>
+                ))
+              )}
+            </View>
 
-        <Card>
-          <View style={styles.section}>
-            <SectionLabel>Event counts</SectionLabel>
-            {isLoading ? (
-              <ActivityIndicator color={colors.amber600} />
-            ) : eventCounts.length === 0 ? (
-              <Text style={styles.emptyText}>No events logged on {formattedSelectedDay}.</Text>
-            ) : (
-              eventCounts.map((count) => (
-                <View key={count.normalizedLabel} style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>{count.label}</Text>
-                  <Text style={styles.totalValue}>{count.count}</Text>
-                </View>
-              ))
-            )}
+            <View style={styles.summaryDivider} />
+
+            <View style={styles.summarySection}>
+              <SectionLabel>Event counts</SectionLabel>
+              {isLoading ? (
+                <ActivityIndicator color={colors.amber600} />
+              ) : eventCounts.length === 0 ? (
+                <Text style={styles.emptyText}>No events logged on {formattedSelectedDay}.</Text>
+              ) : (
+                eventCounts.map((count) => (
+                  <View key={count.normalizedLabel} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>{count.label}</Text>
+                    <Text style={styles.totalValue}>{count.count}</Text>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         </Card>
 
@@ -420,8 +606,20 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing["3xl"] },
+  content: {
+    width: "100%",
+    maxWidth: 980,
+    alignSelf: "center",
+    padding: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
+    gap: spacing["2xl"],
+    paddingBottom: spacing["4xl"],
+  },
   section: { gap: spacing.md },
+  slimTopCard: {
+    height: 96,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
   dayPicker: {
     flexDirection: "row",
     alignItems: "center",
@@ -429,21 +627,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundMuted,
     borderWidth: 1,
     borderColor: colors.borderAmber,
-    borderRadius: radius.xl,
-    padding: spacing.sm,
+    borderRadius: radius.lg,
+    minHeight: 40,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   dayButton: {
     borderWidth: 1,
     borderColor: colors.borderAmber,
     backgroundColor: colors.backgroundLight,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 3,
+    borderRadius: radius.full,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dayButtonDisabled: { opacity: 0.45 },
-  dayButtonText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone700 },
-  dayButtonTextDisabled: { color: colors.stone400 },
-  dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.sm, fontWeight: "700", color: colors.stone800 },
+  dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.xs, fontWeight: "700", color: colors.stone800 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
   errorText: { fontSize: fontSize.xs, color: colors.rose700 },
@@ -473,6 +673,9 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
   emptyDescription: { fontSize: fontSize.xs, color: colors.stone500, lineHeight: 18 },
+  summaryGroup: { gap: spacing.lg },
+  summarySection: { gap: spacing.sm },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
   activityCanvas: {
     position: "absolute",
     top: spacing.sm,
@@ -500,10 +703,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    backgroundColor: colors.indigo50,
+    backgroundColor: "rgba(238, 239, 255, 0.95)",
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.indigo600,
+    borderColor: "rgba(90, 90, 200, 0.85)",
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     maxWidth: 90,

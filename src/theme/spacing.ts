@@ -10,6 +10,7 @@ export const spacing = {
   xl: 20,
   "2xl": 24,
   "3xl": 32,
+  "4xl": 40,
 } as const;
 
 export const radius = {
@@ -28,4 +29,9 @@ export const fontSize = {
   lg: 18,
   xl: 20,
   "2xl": 24,
+} as const;
+
+export const controlSize = {
+  md: 44,
+  lg: 50,
 } as const;

@@ -20,22 +20,24 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
-      <View style={styles.topRow}>
-        <View style={styles.logo}>
-          <View style={styles.logoDot} />
-          <Text style={styles.logoText}>AWAREDAY</Text>
+      <View style={styles.inner}>
+        <View style={styles.topRow}>
+          <View style={styles.logo}>
+            <View style={styles.logoDot} />
+            <Text style={styles.logoText}>AWAREDAY</Text>
+          </View>
+          {right}
         </View>
-        {right}
-      </View>
 
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateBadgeText}>{todayLabel}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{title}</Text>
+          <View style={styles.dateBadge}>
+            <Text style={styles.dateBadgeText}>{todayLabel}</Text>
+          </View>
         </View>
-      </View>
 
-      <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
     </View>
   );
 }
@@ -47,6 +49,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.divider,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
+  },
+  inner: {
+    width: "100%",
+    maxWidth: 980,
+    alignSelf: "center",
     gap: spacing.md,
   },
   topRow: {

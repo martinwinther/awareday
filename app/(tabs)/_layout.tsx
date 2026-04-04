@@ -4,19 +4,12 @@ import { Platform, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "@/src/theme";
 
-function TabIcon({ name, color, focused }: {
+function TabIcon({ name, color }: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
-  focused: boolean;
 }) {
   return (
     <View style={styles.iconContainer}>
-      <View
-        style={[
-          styles.indicator,
-          { backgroundColor: focused ? colors.tabIndicatorActive : colors.tabIndicatorInactive },
-        ]}
-      />
       <FontAwesome name={name} size={20} color={color} />
     </View>
   );
@@ -38,8 +31,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Today",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="sun-o" color={color} focused={focused} />
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="sun-o" color={color} />
           ),
         }}
       />
@@ -47,8 +40,8 @@ export default function TabLayout() {
         name="history"
         options={{
           title: "History",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="calendar" color={color} focused={focused} />
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="calendar" color={color} />
           ),
         }}
       />
@@ -56,8 +49,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="cog" color={color} focused={focused} />
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="cog" color={color} />
           ),
         }}
       />
@@ -93,11 +86,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: "center",
-    gap: 3,
-  },
-  indicator: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    justifyContent: "center",
   },
 });

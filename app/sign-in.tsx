@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { FirebaseError } from "firebase/app";
 import { signInForMvp, useAuthUser } from "@/src/lib/firebase/auth";
 import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize } from "@/src/theme/spacing";
+import { spacing, radius, fontSize, controlSize } from "@/src/theme/spacing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getSignInErrorMessage(error: unknown): string {
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAmber,
     padding: spacing.xl,
-    gap: spacing.xl,
+    gap: spacing.lg,
     ...Platform.select({
       ios: { shadowColor: "rgba(63, 42, 26, 0.32)", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 1, shadowRadius: 24 },
       android: { elevation: 5 },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderAmber,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
-    height: 50,
+    height: controlSize.lg,
     fontSize: fontSize.base,
     color: colors.stone900,
     backgroundColor: colors.backgroundLight,
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.amber900,
     borderRadius: radius.md,
-    height: 50,
+    height: controlSize.lg,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAmber,
     borderRadius: radius.md,
-    height: 50,
+    height: controlSize.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.backgroundLight,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAmber,
     borderRadius: radius.md,
-    height: 50,
+    height: controlSize.lg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.backgroundSoft,

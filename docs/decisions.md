@@ -61,3 +61,16 @@
 - Sign-in communicates value more clearly before auth actions.
 - History day schedule is easier to scan with a clearer time axis, dedicated event rail, and stronger day navigation hierarchy.
 - Future UI work should build on the updated palette and shared component primitives for consistency.
+
+## 2026-04-04: Layout rhythm arrangement pass
+
+**Decision:** Refine spatial hierarchy by introducing a slightly expanded spacing scale (`4xl`), shared control-height tokens, and grouped summary structures on Today and History to reduce repetitive card rhythm.
+
+**Why:**
+- The previous structure repeated equal-spacing cards too uniformly, which weakened hierarchy and made secondary sections compete for attention.
+- Grouping related data (activity totals + event counts) into single summary clusters creates tighter local rhythm while preserving generous separation between primary interaction zones.
+
+**Consequences:**
+- Today and History now use tighter intra-group spacing with clearer inter-group breathing room.
+- Touch target sizing and control heights are more consistent via shared `controlSize` tokens.
+- Future layout changes should prefer grouped section composition over adding additional same-weight cards.

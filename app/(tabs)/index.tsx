@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Platform, Modal } from "react-native";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
-import { ScreenHeader } from "@/src/components/screen-header";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
@@ -30,13 +30,15 @@ import {
   listTodayEventEntries,
 } from "@/src/lib/firestore/repositories";
 import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize } from "@/src/theme/spacing";
+import { spacing, radius, fontSize, controlSize } from "@/src/theme/spacing";
 import { isOnLocalDay } from "@/src/lib/domain/local-day";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const fallbackActivityLabels = ["Work", "Walk dog", "Cooking"];
 const fallbackEventLabels = ["Coffee", "Water", "Energy drink"];
 
 export default function TodayScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthUser();
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
@@ -49,6 +51,7 @@ export default function TodayScreen() {
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
   const [isLoadingActivities, setIsLoadingActivities] = useState(true);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [showEndActivityPicker, setShowEndActivityPicker] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -151,6 +154,7 @@ export default function TodayScreen() {
 
   const handleEndActivity = useCallback(async (entry: ActivityEntry) => {
     if (!user) return;
+    setShowEndActivityPicker(false);
     setIsEndingActivity(true);
     setErrorMessage(null);
     try {
@@ -202,8 +206,7 @@ export default function TodayScreen() {
   const isMutatingActivity = isStartingActivity || isEndingActivity;
 
   return (
-    <ScrollView style={s.scroll} contentContainerStyle={s.content}>
-      <ScreenHeader title="Today" subtitle="Capture the day as it unfolds." />
+    <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + spacing.lg }]}> 
 
       {successMessage ? (
         <View style={s.successBox}><Text style={s.successText}>{successMessage}</Text></View>
@@ -246,7 +249,7 @@ export default function TodayScreen() {
                   if (match) void handleEndActivity(match);
                   else setErrorMessage(`No open activity found for "${label}".`);
                 } else if (openActivitiesToday.length > 0) {
-                  void handleEndActivity(openActivitiesToday[0]);
+                  setShowEndActivityPicker(true);
                 }
               }}
               disabled={isMutatingActivity || openActivitiesToday.length === 0}
@@ -254,7 +257,7 @@ export default function TodayScreen() {
               <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
             </Pressable>
           </View>
-          <Text style={s.helperText}>Leave input empty to end the most recent open activity.</Text>
+          <Text style={s.helperText}>Leave input empty to pick from currently running activities.</Text>
           {activityQuickLabels === null ? (
             <ActivityIndicator color={colors.amber600} />
           ) : (
@@ -302,103 +305,154 @@ export default function TodayScreen() {
         </Card>
       </View>
 
-      {/* Open activities */}
-      <Card>
-        <View style={s.sectionHeader}>
-          <SectionLabel>Open activities</SectionLabel>
-          <Text style={s.countText}>{openActivitiesToday.length} active</Text>
-        </View>
-        {isLoadingActivities ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : openActivitiesToday.length === 0 ? (
-          <Text style={s.emptyText}>No open activities right now. Start one above.</Text>
-        ) : (
-          openActivitiesToday.map((entry) => (
-            <View key={entry.id} style={s.openActivityRow}>
-              <View style={s.openActivityInfo}>
-                <Text style={s.openActivityLabel}>{entry.label}</Text>
-                <Text style={s.openActivityTime}>Started {formatClockTime(entry.timestamp.toDate())}</Text>
+      <View style={s.secondaryStack}>
+        {/* Open activities */}
+        <Card>
+          <View style={s.sectionHeader}>
+            <SectionLabel>Open activities</SectionLabel>
+            <Text style={s.countText}>{openActivitiesToday.length} active</Text>
+          </View>
+          {isLoadingActivities ? (
+            <ActivityIndicator color={colors.amber600} />
+          ) : openActivitiesToday.length === 0 ? (
+            <Text style={s.emptyText}>No open activities right now. Start one above.</Text>
+          ) : (
+            openActivitiesToday.map((entry) => (
+              <View key={entry.id} style={s.openActivityRow}>
+                <View style={s.openActivityInfo}>
+                  <Text style={s.openActivityLabel}>{entry.label}</Text>
+                  <Text style={s.openActivityTime}>Started {formatClockTime(entry.timestamp.toDate())}</Text>
+                </View>
+                <Pressable style={s.endSmallButton} onPress={() => void handleEndActivity(entry)} disabled={isEndingActivity}>
+                  <Text style={s.endSmallButtonText}>End</Text>
+                </Pressable>
               </View>
-              <Pressable style={s.endSmallButton} onPress={() => void handleEndActivity(entry)} disabled={isEndingActivity}>
-                <Text style={s.endSmallButtonText}>End</Text>
-              </Pressable>
-            </View>
-          ))
-        )}
-      </Card>
+            ))
+          )}
+        </Card>
 
-      {/* Activity totals */}
-      <Card>
-        <SectionLabel>Activity totals</SectionLabel>
-        {isLoadingActivities ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : todayTotals.length === 0 ? (
-          <Text style={s.emptyText}>No completed activities yet today.</Text>
-        ) : (
-          todayTotals.map((total) => (
-            <View key={total.normalizedLabel} style={s.totalRow}>
-              <Text style={s.totalLabel}>{total.label}</Text>
-              <Text style={s.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
+        <Card>
+          <View style={s.summaryGroup}>
+            <View style={s.summarySection}>
+              <SectionLabel>Activity totals</SectionLabel>
+              {isLoadingActivities ? (
+                <ActivityIndicator color={colors.amber600} />
+              ) : todayTotals.length === 0 ? (
+                <Text style={s.emptyText}>No completed activities yet today.</Text>
+              ) : (
+                todayTotals.map((total) => (
+                  <View key={total.normalizedLabel} style={s.totalRow}>
+                    <Text style={s.totalLabel}>{total.label}</Text>
+                    <Text style={s.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
+                  </View>
+                ))
+              )}
             </View>
-          ))
-        )}
-      </Card>
 
-      {/* Event counts */}
-      <Card>
-        <SectionLabel>Event counts</SectionLabel>
-        {isLoadingEvents ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : todayEventCounts.length === 0 ? (
-          <Text style={s.emptyText}>No events logged yet today.</Text>
-        ) : (
-          todayEventCounts.map((count) => (
-            <View key={count.normalizedLabel} style={s.totalRow}>
-              <Text style={s.totalLabel}>{count.label}</Text>
-              <Text style={s.totalValue}>{count.count}</Text>
+            <View style={s.summaryDivider} />
+
+            <View style={s.summarySection}>
+              <SectionLabel>Event counts</SectionLabel>
+              {isLoadingEvents ? (
+                <ActivityIndicator color={colors.amber600} />
+              ) : todayEventCounts.length === 0 ? (
+                <Text style={s.emptyText}>No events logged yet today.</Text>
+              ) : (
+                todayEventCounts.map((count) => (
+                  <View key={count.normalizedLabel} style={s.totalRow}>
+                    <Text style={s.totalLabel}>{count.label}</Text>
+                    <Text style={s.totalValue}>{count.count}</Text>
+                  </View>
+                ))
+              )}
             </View>
-          ))
-        )}
-      </Card>
+          </View>
+        </Card>
+      </View>
 
       {/* Timeline */}
       <Card>
-        <SectionLabel>Activity log</SectionLabel>
-        {(isLoadingActivities || isLoadingEvents) ? (
-          <ActivityIndicator color={colors.amber600} />
-        ) : todayTimeline.length === 0 ? (
-          <Text style={s.emptyText}>No entries in your activity log yet.</Text>
-        ) : (
-          todayTimeline.map((item) => {
-            const entry = item.entry;
-            const badgeColor = item.kind === "activity-start" ? colors.emerald600 : item.kind === "activity-end" ? colors.amber600 : colors.indigo600;
-            const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Event";
-            return (
-              <View key={`${item.kind}-${entry.id}`} style={s.timelineRow}>
-                <View style={s.timelineLeft}>
-                  <View style={[s.timelineBadge, { backgroundColor: badgeColor }]}>
-                    <Text style={s.timelineBadgeText}>{badgeLabel}</Text>
+        <View style={s.cardSection}>
+          <SectionLabel>Activity log</SectionLabel>
+          {(isLoadingActivities || isLoadingEvents) ? (
+            <ActivityIndicator color={colors.amber600} />
+          ) : todayTimeline.length === 0 ? (
+            <Text style={s.emptyText}>No entries in your activity log yet.</Text>
+          ) : (
+            todayTimeline.map((item) => {
+              const entry = item.entry;
+              const badgeColor = item.kind === "activity-start" ? colors.emerald600 : item.kind === "activity-end" ? colors.amber600 : colors.indigo600;
+              const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Event";
+              return (
+                <View key={`${item.kind}-${entry.id}`} style={s.timelineRow}>
+                  <View style={s.timelineLeft}>
+                    <View style={[s.timelineBadge, { backgroundColor: badgeColor }]}>
+                      <Text style={s.timelineBadgeText}>{badgeLabel}</Text>
+                    </View>
+                    <Text style={s.timelineLabel}>{entry.label}</Text>
                   </View>
-                  <Text style={s.timelineLabel}>{entry.label}</Text>
-                  <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
+                  <View style={s.timelineRight}>
+                    <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
+                    <Pressable style={s.deleteIconButton} onPress={() => void handleDeleteTimelineItem(item)}>
+                      <FontAwesome name="trash" size={12} color={colors.white} />
+                    </Pressable>
+                  </View>
                 </View>
-                <Pressable onPress={() => void handleDeleteTimelineItem(item)}>
-                  <Text style={s.deleteText}>Delete</Text>
-                </Pressable>
-              </View>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </View>
       </Card>
 
-      <View style={{ height: spacing["3xl"] }} />
+      <View style={{ height: spacing["4xl"] }} />
+
+      <Modal visible={showEndActivityPicker} transparent animationType="fade" onRequestClose={() => setShowEndActivityPicker(false)}>
+        <View style={s.modalBackdrop}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>End running activity</Text>
+            <Text style={s.modalSubtitle}>Choose an activity to end now.</Text>
+
+            <View style={s.modalList}>
+              {openActivitiesToday.length === 0 ? (
+                <Text style={s.emptyText}>No running activities found.</Text>
+              ) : (
+                openActivitiesToday.map((entry) => (
+                  <Pressable
+                    key={`end-picker-${entry.id}`}
+                    style={[s.modalListItem, isEndingActivity && s.disabled]}
+                    onPress={() => void handleEndActivity(entry)}
+                    disabled={isEndingActivity}
+                  >
+                    <View style={s.modalListTextWrap}>
+                      <Text style={s.modalListLabel}>{entry.label}</Text>
+                      <Text style={s.modalListTime}>Started {formatClockTime(entry.timestamp.toDate())}</Text>
+                    </View>
+                    <Text style={s.modalListAction}>{isEndingActivity ? "Ending..." : "End"}</Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+
+            <Pressable style={s.modalCancelButton} onPress={() => setShowEndActivityPicker(false)} disabled={isEndingActivity}>
+              <Text style={s.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.lg },
+  content: {
+    width: "100%",
+    maxWidth: 980,
+    alignSelf: "center",
+    paddingHorizontal: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
+    paddingBottom: spacing["4xl"],
+    gap: spacing["2xl"],
+  },
   successBox: { backgroundColor: colors.emerald50, borderWidth: 1, borderColor: colors.emerald600, borderRadius: radius.md, padding: spacing.md },
   successText: { fontSize: fontSize.sm, color: colors.emerald600, fontWeight: "500" },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md },
@@ -408,8 +462,8 @@ const s = StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.borderAmber,
-    padding: spacing.md,
-    gap: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.lg,
   },
   quickStageHeader: {
     flexDirection: "row",
@@ -425,6 +479,10 @@ const s = StyleSheet.create({
   },
   quickLaneCard: {
     backgroundColor: colors.backgroundCard,
+    gap: spacing.md,
+  },
+  secondaryStack: {
+    gap: spacing.xl,
   },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   badge: { backgroundColor: colors.backgroundMuted, borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: 2, borderWidth: 1, borderColor: colors.borderAmber },
@@ -434,18 +492,18 @@ const s = StyleSheet.create({
     borderColor: colors.borderAmber,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
-    height: 50,
+    height: controlSize.lg,
     fontSize: fontSize.base,
     color: colors.stone900,
     backgroundColor: colors.backgroundLight,
   },
   buttonRow: { flexDirection: "row", gap: spacing.sm },
-  startButton: { flex: 1, backgroundColor: colors.emerald600, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
-  endButton: { flex: 1, backgroundColor: colors.orange700, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
-  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: 50, alignItems: "center", justifyContent: "center" },
+  startButton: { flex: 1, backgroundColor: colors.emerald600, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
+  endButton: { flex: 1, backgroundColor: colors.orange700, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
+  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
   buttonTextWhite: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
   disabled: { opacity: 0.45 },
-  helperText: { fontSize: fontSize.xs, color: colors.stone500, marginTop: -2 },
+  helperText: { fontSize: fontSize.xs, color: colors.stone500 },
   chipLabel: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone500, marginBottom: spacing.sm },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber300, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
@@ -458,14 +516,92 @@ const s = StyleSheet.create({
   openActivityTime: { fontSize: fontSize.xs, color: colors.stone500 },
   endSmallButton: { backgroundColor: colors.orange700, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   endSmallButtonText: { color: colors.white, fontSize: fontSize.xs, fontWeight: "600" },
+  summaryGroup: { gap: spacing.lg },
+  summarySection: { gap: spacing.sm },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
+  cardSection: { gap: spacing.sm },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
   totalLabel: { fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
-  timelineRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider },
-  timelineLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
+  timelineRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: spacing.md },
+  timelineLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1, minWidth: 0 },
+  timelineRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   timelineBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   timelineBadgeText: { color: colors.white, fontSize: fontSize.caption, fontWeight: "600" },
   timelineLabel: { fontSize: fontSize.sm, color: colors.stone800, flex: 1 },
   timelineTime: { fontSize: fontSize.xs, color: colors.stone500 },
-  deleteText: { fontSize: fontSize.xs, color: colors.rose700, fontWeight: "500" },
+  deleteIconButton: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.rose700,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.42)",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.backgroundCard,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  modalTitle: {
+    fontSize: fontSize.base,
+    fontWeight: "700",
+    color: colors.stone900,
+  },
+  modalSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.stone600,
+  },
+  modalList: {
+    gap: spacing.sm,
+  },
+  modalListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.backgroundSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  modalListTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  modalListLabel: {
+    fontSize: fontSize.sm,
+    color: colors.stone900,
+    fontWeight: "600",
+  },
+  modalListTime: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+  },
+  modalListAction: {
+    fontSize: fontSize.sm,
+    color: colors.orange700,
+    fontWeight: "700",
+  },
+  modalCancelButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  modalCancelText: {
+    fontSize: fontSize.sm,
+    color: colors.stone700,
+    fontWeight: "600",
+  },
 });

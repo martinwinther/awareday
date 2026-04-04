@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
-import { ScreenHeader } from "@/src/components/screen-header";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser, signOutCurrentUser } from "@/src/lib/firebase/auth";
@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/firestore/repositories";
 import { colors } from "@/src/theme/colors";
 import { spacing, radius, fontSize } from "@/src/theme/spacing";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof FirebaseError) return error.message;
@@ -37,6 +38,7 @@ function confirmDelete(name: string): Promise<boolean> {
 }
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuthUser();
   const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [eventLabels, setEventLabels] = useState<EventLabel[]>([]);
@@ -239,18 +241,16 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Settings" subtitle="Manage your reusable quick labels." />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Card>
-          <View style={styles.section}>
+        <Card style={styles.slimTopCard}>
+          <View style={styles.slimTopSection}>
             <SectionLabel>Settings</SectionLabel>
             <Text style={styles.heading}>Saved labels</Text>
-            <Text style={styles.description}>Manage quick labels used on Today for activities and events.</Text>
             {hasNoSavedLabels ? (
               <View style={styles.emptyNotice}>
                 <Text style={styles.emptyTitle}>No saved labels yet.</Text>
@@ -285,9 +285,11 @@ export default function SettingsScreen() {
                 onPress={() => void handleAddActivityLabel()}
                 disabled={isMutating}
               >
-                <Text style={styles.addButtonText}>
-                  {activeMutationKey === "activity:add" ? "Adding..." : "Add"}
-                </Text>
+                {activeMutationKey === "activity:add" ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <FontAwesome name="plus" size={14} color={colors.white} />
+                )}
               </Pressable>
             </View>
 
@@ -302,7 +304,6 @@ export default function SettingsScreen() {
               <View style={styles.labelList}>
                 {activityLabels.map((label) => {
                   const isEditing = editingActivityLabelId === label.id;
-                  const isDeleting = activeMutationKey === `activity:delete:${label.id}`;
                   const isSaving = activeMutationKey === `activity:save:${label.id}`;
 
                   if (isEditing) {
@@ -340,18 +341,19 @@ export default function SettingsScreen() {
                       <Text style={styles.labelName} numberOfLines={1}>{label.name}</Text>
                       <View style={styles.labelActions}>
                         <Pressable
-                          style={[styles.actionButton, isMutating && styles.disabled]}
+                          style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => { setEditingActivityLabelId(label.id); setEditingActivityLabelInput(label.name); }}
                           disabled={isMutating}
+                          accessibilityLabel={`Rename ${label.name}`}
                         >
-                          <Text style={styles.actionButtonText}>Rename</Text>
+                          <FontAwesome name="pencil" size={12} color={colors.stone700} />
                         </Pressable>
                         <Pressable
-                          style={[styles.actionButton, styles.actionButtonWarning, isMutating && styles.disabled]}
+                          style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => void handleDeleteActivityLabel(label)}
                           disabled={isMutating}
                         >
-                          <Text style={styles.actionButtonWarningText}>{isDeleting ? "..." : "Delete"}</Text>
+                          <FontAwesome name="trash" size={12} color={colors.white} />
                         </Pressable>
                       </View>
                     </View>
@@ -380,9 +382,11 @@ export default function SettingsScreen() {
                 onPress={() => void handleAddEventLabel()}
                 disabled={isMutating}
               >
-                <Text style={styles.addButtonText}>
-                  {activeMutationKey === "event:add" ? "Adding..." : "Add"}
-                </Text>
+                {activeMutationKey === "event:add" ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <FontAwesome name="plus" size={14} color={colors.white} />
+                )}
               </Pressable>
             </View>
 
@@ -397,7 +401,6 @@ export default function SettingsScreen() {
               <View style={styles.labelList}>
                 {eventLabels.map((label) => {
                   const isEditing = editingEventLabelId === label.id;
-                  const isDeleting = activeMutationKey === `event:delete:${label.id}`;
                   const isSaving = activeMutationKey === `event:save:${label.id}`;
 
                   if (isEditing) {
@@ -435,18 +438,19 @@ export default function SettingsScreen() {
                       <Text style={styles.labelName} numberOfLines={1}>{label.name}</Text>
                       <View style={styles.labelActions}>
                         <Pressable
-                          style={[styles.actionButton, isMutating && styles.disabled]}
+                          style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => { setEditingEventLabelId(label.id); setEditingEventLabelInput(label.name); }}
                           disabled={isMutating}
+                          accessibilityLabel={`Rename ${label.name}`}
                         >
-                          <Text style={styles.actionButtonText}>Rename</Text>
+                          <FontAwesome name="pencil" size={12} color={colors.stone700} />
                         </Pressable>
                         <Pressable
-                          style={[styles.actionButton, styles.actionButtonWarning, isMutating && styles.disabled]}
+                          style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => void handleDeleteEventLabel(label)}
                           disabled={isMutating}
                         >
-                          <Text style={styles.actionButtonWarningText}>{isDeleting ? "..." : "Delete"}</Text>
+                          <FontAwesome name="trash" size={12} color={colors.white} />
                         </Pressable>
                       </View>
                     </View>
@@ -474,8 +478,25 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing["3xl"] },
+  content: {
+    width: "100%",
+    maxWidth: 980,
+    alignSelf: "center",
+    padding: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
+    gap: spacing["2xl"],
+    paddingBottom: spacing["4xl"],
+  },
   section: { gap: spacing.md },
+  slimTopCard: {
+    height: 96,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  slimTopSection: {
+    flex: 1,
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
   heading: { fontSize: fontSize.lg, fontWeight: "700", color: colors.stone900 },
   description: { fontSize: fontSize.sm, color: colors.stone600, lineHeight: 20 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
@@ -508,13 +529,12 @@ const styles = StyleSheet.create({
   },
   addButton: {
     height: 44,
-    borderRadius: radius.xl,
+    width: 44,
+    borderRadius: radius.full,
     backgroundColor: colors.amber900,
-    paddingHorizontal: spacing.lg,
     justifyContent: "center",
     alignItems: "center",
   },
-  addButtonText: { fontSize: fontSize.sm, fontWeight: "600", color: colors.white },
   disabled: { opacity: 0.45 },
   labelList: { gap: spacing.sm },
   labelRow: {
@@ -530,7 +550,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   labelName: { flex: 1, fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
-  labelActions: { flexDirection: "row", gap: spacing.sm },
+  labelActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   actionButton: {
     borderWidth: 1,
     borderColor: colors.borderAmber,
@@ -543,7 +563,15 @@ const styles = StyleSheet.create({
   actionButtonPrimary: { backgroundColor: colors.amber900, borderColor: colors.amber900 },
   actionButtonPrimaryText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
   actionButtonWarning: { backgroundColor: colors.orange700, borderColor: colors.orange700 },
-  actionButtonWarningText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
+  actionButtonIconOnly: {
+    width: 30,
+    height: 30,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   signOutButton: {
     borderWidth: 1,
     borderColor: colors.rose200,
