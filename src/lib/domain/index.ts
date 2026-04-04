@@ -40,3 +40,6 @@ export { deriveSingleDayCalendarItems } from "./derive-single-day-calendar-items
 // Timeline
 export type { TodayTimelineItem } from "./derive-today-timeline";
 export { deriveTodayTimeline } from "./derive-today-timeline";
+
+// Display helpers
+export { formatClockTime, formatDuration } from "./summary-helpers";

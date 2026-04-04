@@ -1,211 +1,186 @@
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import { useRouter } from "expo-router";
+import { FirebaseError } from "firebase/app";
+import { signInForMvp, useAuthUser } from "@/src/lib/firebase/auth";
+import { colors } from "@/src/theme/colors";
+import { spacing, radius, fontSize } from "@/src/theme/spacing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Card } from "@/src/components/card";
-import { colors, spacing, fontSize, radius } from "@/src/theme";
-
-const features = [
-  "Fast mobile-first logging",
-  "Activity totals from timestamps",
-  "Daily event counts and history",
-];
+function getSignInErrorMessage(error: unknown): string {
+  if (!(error instanceof FirebaseError)) {
+    if (error instanceof Error) return error.message;
+    return "Unable to sign in right now. Please try again.";
+  }
+  switch (error.code) {
+    case "auth/invalid-email": return "Enter a valid email address.";
+    case "auth/invalid-credential": return "Email or password is incorrect.";
+    case "auth/email-already-in-use": return "That email is already in use. Try signing in instead.";
+    case "auth/weak-password": return "Password is too weak. Use at least 6 characters.";
+    case "auth/popup-closed-by-user": return "Google sign-in was closed before completion.";
+    case "auth/popup-blocked": return "Google sign-in popup was blocked by the browser.";
+    case "auth/operation-not-allowed": return "This sign-in method is not enabled.";
+    case "auth/unauthorized-domain": return "This domain is not authorized for Google sign-in.";
+    default: return error.message;
+  }
+}
 
 export default function SignInScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, loading } = useAuthUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/(tabs)");
+    }
+  }, [loading, router, user]);
+
+  const handleEmailSignIn = async (intent: "signin" | "signup") => {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await signInForMvp({ method: "email", email: emailInput, password: passwordInput, intent });
+      router.replace("/(tabs)");
+    } catch (error) {
+      setErrorMessage(getSignInErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await signInForMvp({ method: "google" });
+      router.replace("/(tabs)");
+    } catch (error) {
+      setErrorMessage(getSignInErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 40 }]}>
+        <ActivityIndicator color={colors.amber600} />
+      </View>
+    );
+  }
+
+  const isDisabled = isSubmitting || loading;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing["3xl"] }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Card style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.logoText}>AWAREDAY</Text>
-            <Text style={styles.title}>Sign in to log your day</Text>
-            <Text style={styles.description}>
-              Capture what started, what ended, and what happened in a clean daily timeline.
-            </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing["2xl"], paddingBottom: insets.bottom + spacing["2xl"] }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.card}>
+        <View style={styles.headerSection}>
+          <Text style={styles.brand}>AWAREDAY</Text>
+          <Text style={styles.title}>Sign in to log your day</Text>
+          <Text style={styles.subtitle}>Capture what started, what ended, and what happened in a clean daily timeline.</Text>
+        </View>
+
+        <View style={styles.features}>
+          {["Fast mobile-first logging", "Activity totals from timestamps", "Daily event counts and history"].map((text) => (
+            <View key={text} style={styles.featureChip}><Text style={styles.featureText}>{text}</Text></View>
+          ))}
+        </View>
+
+        {errorMessage ? (
+          <View style={styles.errorBox}><Text style={styles.errorText}>{errorMessage}</Text></View>
+        ) : null}
+
+        <View style={styles.formSection}>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={emailInput}
+              onChangeText={setEmailInput}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              editable={!isDisabled}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.stone400}
+            />
           </View>
-
-          <View style={styles.features}>
-            {features.map((feature) => (
-              <View key={feature} style={styles.featureRow}>
-                <Text style={styles.featureText}>{feature}</Text>
-              </View>
-            ))}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={passwordInput}
+              onChangeText={setPasswordInput}
+              secureTextEntry
+              autoComplete="current-password"
+              editable={!isDisabled}
+              placeholder="Enter password"
+              placeholderTextColor={colors.stone400}
+            />
           </View>
+          <Pressable style={[styles.primaryButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signin")} disabled={isDisabled}>
+            <Text style={styles.primaryButtonText}>{isSubmitting ? "Signing in..." : "Sign in with email"}</Text>
+          </Pressable>
+          <Pressable style={[styles.ghostButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signup")} disabled={isDisabled}>
+            <Text style={styles.ghostButtonText}>Create account with email</Text>
+          </Pressable>
+        </View>
 
-          <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.input}>
-                <Text style={styles.inputPlaceholder}>you@example.com</Text>
-              </View>
-            </View>
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.input}>
-                <Text style={styles.inputPlaceholder}>Enter password</Text>
-              </View>
-            </View>
+        <Pressable style={[styles.ghostButton, isDisabled && styles.disabled]} onPress={() => void handleGoogleSignIn()} disabled={isDisabled}>
+          <Text style={styles.ghostButtonText}>{isSubmitting ? "Signing in..." : "Continue with Google"}</Text>
+        </Pressable>
 
-            <View style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Sign in with email</Text>
-            </View>
-
-            <View style={styles.ghostButton}>
-              <Text style={styles.ghostButtonText}>Create account with email</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <View style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>Continue with Google</Text>
-          </View>
-
-          <Text style={styles.footnote}>
-            Use email/password or Google to sign in for MVP.
-          </Text>
-        </Card>
-      </ScrollView>
-    </View>
+        <Text style={styles.footnote}>Use email/password or Google to sign in for MVP.</Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: spacing.xl,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.xl },
   card: {
-    gap: spacing.xl,
-  },
-  header: {
-    gap: spacing.sm,
-  },
-  logoText: {
-    fontSize: fontSize.caption,
-    fontWeight: "700",
-    letterSpacing: 2,
-    color: colors.stone500,
-  },
-  title: {
-    fontSize: fontSize["2xl"],
-    fontWeight: "700",
-    color: colors.stone900,
-  },
-  description: {
-    fontSize: fontSize.sm,
-    color: colors.stone600,
-    lineHeight: 20,
-  },
-  features: {
-    gap: spacing.sm,
-  },
-  featureRow: {
-    backgroundColor: colors.backgroundSoft,
-    borderWidth: 1,
-    borderColor: colors.amber100,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  featureText: {
-    fontSize: fontSize.sm,
-    color: colors.stone600,
-  },
-  form: {
-    gap: spacing.md,
-  },
-  fieldGroup: {
-    gap: spacing.xs,
-  },
-  label: {
-    fontSize: fontSize.xs,
-    fontWeight: "600",
-    color: colors.stone600,
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: "rgba(232, 207, 169, 0.7)",
-    borderRadius: radius.xl,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md + 2,
-    justifyContent: "center",
-  },
-  inputPlaceholder: {
-    fontSize: fontSize.sm,
-    color: colors.stone400,
-  },
-  primaryButton: {
-    height: 44,
-    borderRadius: radius.xl,
-    backgroundColor: colors.amber900,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: colors.backgroundCard, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.xl,
     ...Platform.select({
-      ios: {
-        shadowColor: "rgba(120, 69, 20, 0.5)",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      android: { elevation: 3 },
     }),
   },
-  primaryButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: "600",
-    color: colors.white,
-  },
-  ghostButton: {
-    height: 44,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderAmber,
-    backgroundColor: "#fffbf7",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  ghostButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: "500",
-    color: colors.stone700,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.amber200,
-  },
-  dividerText: {
-    fontSize: fontSize.xs,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: colors.stone400,
-  },
-  footnote: {
-    fontSize: fontSize.xs,
-    color: colors.stone500,
-  },
+  headerSection: { gap: spacing.sm },
+  brand: { fontSize: fontSize.caption, fontWeight: "600", letterSpacing: 2, color: colors.stone500 },
+  title: { fontSize: fontSize["2xl"], fontWeight: "600", color: colors.stone900 },
+  subtitle: { fontSize: fontSize.sm, color: colors.stone600, lineHeight: 20 },
+  features: { gap: spacing.sm },
+  featureChip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber100, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  featureText: { fontSize: fontSize.sm, color: colors.stone600 },
+  errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  errorText: { fontSize: fontSize.sm, color: colors.rose700 },
+  formSection: { gap: spacing.md },
+  fieldGroup: { gap: spacing.xs },
+  label: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone600 },
+  input: { borderWidth: 1, borderColor: colors.amber200, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 48, fontSize: fontSize.base, color: colors.stone900, backgroundColor: colors.backgroundLight },
+  primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
+  primaryButtonText: { color: colors.white, fontWeight: "600", fontSize: fontSize.base },
+  ghostButton: { borderWidth: 1, borderColor: colors.amber200, borderRadius: radius.md, height: 48, alignItems: "center", justifyContent: "center" },
+  ghostButtonText: { color: colors.stone700, fontWeight: "500", fontSize: fontSize.sm },
+  disabled: { opacity: 0.5 },
+  divider: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.amber200 },
+  dividerText: { fontSize: fontSize.xs, color: colors.stone400, textTransform: "uppercase", letterSpacing: 1 },
+  footnote: { fontSize: fontSize.xs, color: colors.stone500 },
 });
