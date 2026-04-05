@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
@@ -18,8 +18,15 @@ import {
   type DayViewEventMarker,
 } from "@/src/lib/domain";
 import { listActivityEntriesForDay, listEventEntriesForDay } from "@/src/lib/firestore/repositories";
-import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize, controlSize } from "@/src/theme/spacing";
+import {
+  colors,
+  spacing,
+  radius,
+  fontSize,
+  controlSize,
+  layout,
+  getScreenHorizontalPadding,
+} from "@/src/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getStartOfDay(day: Date): Date {
@@ -270,7 +277,10 @@ function DaySchedule({
     <View
       style={[styles.timelinePreview, { height: totalHeight + spacing.md }]}
       onLayout={(event) => {
-        setScheduleWidth(event.nativeEvent.layout.width);
+        const nextWidth = event.nativeEvent.layout.width;
+        setScheduleWidth((currentWidth) => (
+          currentWidth === nextWidth ? currentWidth : nextWidth
+        ));
       }}
     >
       {hours.map((hour) => {
@@ -393,6 +403,7 @@ function DaySchedule({
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user } = useAuthUser();
   const [selectedDay, setSelectedDay] = useState(() => getStartOfDay(new Date()));
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -437,7 +448,7 @@ export default function HistoryScreen() {
         if (error instanceof FirebaseError) {
           setErrorMessage(error.message);
         } else {
-          setErrorMessage("Could not load history for this day. Please try again.");
+          setErrorMessage("We could not load this day. Please try again.");
         }
       } finally {
         if (isActive) {
@@ -473,11 +484,13 @@ export default function HistoryScreen() {
     [activityEntries, eventEntries, selectedDay],
   );
 
+  const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+
   return (
     <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg, paddingHorizontal: contentHorizontalPadding }]}
         showsVerticalScrollIndicator={false}
       >
         <Card style={styles.slimTopCard}>
@@ -488,6 +501,8 @@ export default function HistoryScreen() {
                 style={styles.dayButton}
                 onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, -1))}
                 accessibilityLabel="Previous day"
+                accessibilityRole="button"
+                accessibilityHint="Show the previous day in history"
               >
                 <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
               </Pressable>
@@ -497,6 +512,8 @@ export default function HistoryScreen() {
                 onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, 1))}
                 disabled={isSelectedDayToday}
                 accessibilityLabel="Next day"
+                accessibilityRole="button"
+                accessibilityHint={isSelectedDayToday ? "Already on today" : "Show the next day in history"}
               >
                 <FontAwesome
                   name="chevron-right"
@@ -510,7 +527,7 @@ export default function HistoryScreen() {
 
         {errorMessage ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not load this day.</Text>
+            <Text style={styles.errorTitle}>We could not load this day.</Text>
             <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -521,7 +538,7 @@ export default function HistoryScreen() {
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color={colors.amber600} />
-                <Text style={styles.loadingText}>Loading day schedule...</Text>
+                <Text style={styles.loadingText}>Loading this day...</Text>
               </View>
             ) : (
               <DaySchedule
@@ -539,7 +556,7 @@ export default function HistoryScreen() {
               {isLoading ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : activityTotals.length === 0 ? (
-                <Text style={styles.emptyText}>No completed activities on {formattedSelectedDay}.</Text>
+                <Text style={styles.emptyText}>No completed activities for this day.</Text>
               ) : (
                 activityTotals.map((total) => (
                   <View key={total.normalizedLabel} style={styles.totalRow}>
@@ -557,7 +574,7 @@ export default function HistoryScreen() {
               {isLoading ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : eventCounts.length === 0 ? (
-                <Text style={styles.emptyText}>No events logged on {formattedSelectedDay}.</Text>
+                <Text style={styles.emptyText}>No events logged for this day.</Text>
               ) : (
                 eventCounts.map((count) => (
                   <View key={count.normalizedLabel} style={styles.totalRow}>
@@ -576,7 +593,7 @@ export default function HistoryScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.amber600} />
             ) : timelineItems.length === 0 ? (
-              <Text style={styles.emptyText}>No entries found for {formattedSelectedDay}.</Text>
+              <Text style={styles.emptyText}>No timeline entries for this day.</Text>
             ) : (
               timelineItems.map((item) => {
                 const entry = item.entry;
@@ -608,15 +625,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: layout.contentMaxWidth,
     alignSelf: "center",
-    padding: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
     gap: spacing["2xl"],
     paddingBottom: spacing["4xl"],
   },
   section: { gap: spacing.md },
   slimTopCard: {
-    height: 96,
+    minHeight: 96,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
   },
@@ -628,7 +644,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAmber,
     borderRadius: radius.lg,
-    minHeight: 40,
+    minHeight: controlSize.lg,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
   },
@@ -637,8 +653,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderAmber,
     backgroundColor: colors.backgroundLight,
     borderRadius: radius.full,
-    width: 28,
-    height: 28,
+    width: controlSize.md,
+    height: controlSize.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -703,10 +719,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    backgroundColor: "rgba(238, 239, 255, 0.95)",
+    backgroundColor: colors.eventPillBackground,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: "rgba(90, 90, 200, 0.85)",
+    borderColor: colors.eventPillBorder,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     maxWidth: 90,
@@ -739,7 +755,7 @@ const styles = StyleSheet.create({
   timelineRowTime: { fontSize: fontSize.xs, color: colors.stone500 },
   timelineBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs },
   badgeStart: { backgroundColor: colors.emerald50 },
-  badgeEnd: { backgroundColor: "#fff8ef" },
+  badgeEnd: { backgroundColor: colors.backgroundAmberSoft },
   badgeEvent: { backgroundColor: colors.indigo50 },
   badgeText: { fontSize: fontSize.caption, fontWeight: "600" },
   badgeTextStart: { color: colors.emerald600 },

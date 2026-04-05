@@ -74,3 +74,23 @@
 - Today and History now use tighter intra-group spacing with clearer inter-group breathing room.
 - Touch target sizing and control heights are more consistent via shared `controlSize` tokens.
 - Future layout changes should prefer grouped section composition over adding additional same-weight cards.
+
+- Date: 2026-04-05
+- Decision: Add a responsive adaptation pass for Today, History, and Settings with width-aware horizontal spacing, larger tap targets, and a two-column quick-log layout on wide screens.
+- Reason: The app must support phone web, native iOS/Android, and desktop web while prioritizing one-handed on-the-go logging.
+- Consequences: Small-screen web layouts now preserve usable content width, key compact controls meet touch-target guidance more consistently, and desktop web gets denser side-by-side quick actions without changing logging behavior.
+
+- Date: 2026-04-05
+- Decision: Optimize startup and Today data loading by removing an unused font-gated splash path and replacing unbounded activity reads with a recent-day query window.
+- Reason: Startup rendering was blocked on an unused font asset, and Today fetched full activity history regardless of day scope, which scales poorly as logs grow.
+- Consequences: Initial render no longer waits on unused font loading, Today now reads a bounded recent activity window (14 days) for faster Firestore responses on long-lived accounts, and History schedule rendering avoids redundant width state updates.
+
+- Date: 2026-04-05
+- Decision: Normalize tab-screen presentation to shared design-system primitives by introducing theme layout helpers and replacing one-off tab-screen color literals with semantic tokens.
+- Reason: Responsive spacing and max-width behavior were duplicated across screens, and several UI surfaces used hard-coded values outside the token system.
+- Consequences: Today, History, Settings, and shared headers now use one consistent content-width/padding model, tab-screen colors are easier to maintain from the theme, and future screen work can reuse established layout and token patterns instead of adding one-offs.
+
+- Date: 2026-04-05
+- Decision: Apply a flagship-level polish pass focused on interaction accessibility metadata and semantic elevation tokens.
+- Reason: The feature set was functionally complete, but icon-heavy and compact controls still had uneven screen-reader affordance and elevation colors were still partly one-off.
+- Consequences: Primary account, label, and timeline actions now expose clearer accessibility labels and hints across screens, and core elevated surfaces use shared theme shadow tokens for more consistent visual behavior.

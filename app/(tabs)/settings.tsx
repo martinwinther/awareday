@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
@@ -16,8 +16,15 @@ import {
   updateActivityLabel,
   updateEventLabel,
 } from "@/src/lib/firestore/repositories";
-import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize } from "@/src/theme/spacing";
+import {
+  colors,
+  spacing,
+  radius,
+  fontSize,
+  controlSize,
+  layout,
+  getScreenHorizontalPadding,
+} from "@/src/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -27,18 +34,19 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function confirmDelete(name: string): Promise<boolean> {
   if (Platform.OS === "web") {
-    return Promise.resolve(window.confirm(`Delete label "${name}"?`));
+    return Promise.resolve(window.confirm(`Delete label "${name}"? You can add it again later.`));
   }
   return new Promise((resolve) => {
-    Alert.alert("Delete label", `Delete "${name}"?`, [
+    Alert.alert("Delete label", `Delete "${name}"? You can add it again later.`, [
       { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-      { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+      { text: "Delete label", style: "destructive", onPress: () => resolve(true) },
     ]);
   });
 }
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user } = useAuthUser();
   const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [eventLabels, setEventLabels] = useState<EventLabel[]>([]);
@@ -102,13 +110,14 @@ export default function SettingsScreen() {
   const isMutating = activeMutationKey !== null;
   const hasLoadedLabels = !isLoadingActivityLabels && !isLoadingEventLabels;
   const hasNoSavedLabels = hasLoadedLabels && activityLabels.length === 0 && eventLabels.length === 0;
+  const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
   // Activity label handlers
 
   const handleAddActivityLabel = async () => {
     if (!user) return;
     const cleaned = activityLabelInput.trim();
-    if (cleaned.length === 0) { setErrorMessage("Enter an activity label first."); return; }
+    if (cleaned.length === 0) { setErrorMessage("Enter an activity label to save it."); return; }
 
     setActiveMutationKey("activity:add");
     setErrorMessage(null);
@@ -117,7 +126,7 @@ export default function SettingsScreen() {
       setActivityLabelInput("");
       await loadActivityLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not save the activity label."));
+      setErrorMessage(getErrorMessage(error, "We could not save that activity label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -140,7 +149,7 @@ export default function SettingsScreen() {
       setEditingActivityLabelInput("");
       await loadActivityLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not update the activity label."));
+      setErrorMessage(getErrorMessage(error, "We could not update that activity label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -161,7 +170,7 @@ export default function SettingsScreen() {
       }
       await loadActivityLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not delete the activity label."));
+      setErrorMessage(getErrorMessage(error, "We could not delete that activity label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -172,7 +181,7 @@ export default function SettingsScreen() {
   const handleAddEventLabel = async () => {
     if (!user) return;
     const cleaned = eventLabelInput.trim();
-    if (cleaned.length === 0) { setErrorMessage("Enter an event label first."); return; }
+    if (cleaned.length === 0) { setErrorMessage("Enter an event label to save it."); return; }
 
     setActiveMutationKey("event:add");
     setErrorMessage(null);
@@ -181,7 +190,7 @@ export default function SettingsScreen() {
       setEventLabelInput("");
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not save the event label."));
+      setErrorMessage(getErrorMessage(error, "We could not save that event label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -204,7 +213,7 @@ export default function SettingsScreen() {
       setEditingEventLabelInput("");
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not update the event label."));
+      setErrorMessage(getErrorMessage(error, "We could not update that event label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -225,7 +234,7 @@ export default function SettingsScreen() {
       }
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not delete the event label."));
+      setErrorMessage(getErrorMessage(error, "We could not delete that event label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -235,7 +244,7 @@ export default function SettingsScreen() {
     try {
       await signOutCurrentUser();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not sign out."));
+      setErrorMessage(getErrorMessage(error, "We could not sign you out. Please try again."));
     }
   };
 
@@ -243,7 +252,7 @@ export default function SettingsScreen() {
     <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg, paddingHorizontal: contentHorizontalPadding }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -254,7 +263,7 @@ export default function SettingsScreen() {
             {hasNoSavedLabels ? (
               <View style={styles.emptyNotice}>
                 <Text style={styles.emptyTitle}>No saved labels yet.</Text>
-                <Text style={styles.emptyDescription}>Add activity and event labels below to unlock faster one-tap logging on Today.</Text>
+                <Text style={styles.emptyDescription}>Add activity and event labels below for faster logging on Today.</Text>
               </View>
             ) : null}
           </View>
@@ -262,7 +271,7 @@ export default function SettingsScreen() {
 
         {errorMessage ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not update your labels.</Text>
+            <Text style={styles.errorTitle}>We could not save your changes.</Text>
             <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -276,7 +285,7 @@ export default function SettingsScreen() {
                 style={styles.input}
                 value={activityLabelInput}
                 onChangeText={setActivityLabelInput}
-                placeholder="Add activity label"
+                placeholder="Activity label name"
                 placeholderTextColor={colors.stone400}
                 editable={!isMutating}
               />
@@ -284,6 +293,9 @@ export default function SettingsScreen() {
                 style={[styles.addButton, isMutating && styles.disabled]}
                 onPress={() => void handleAddActivityLabel()}
                 disabled={isMutating}
+                accessibilityRole="button"
+                accessibilityLabel="Add activity label"
+                accessibilityHint="Saves the activity label you entered"
               >
                 {activeMutationKey === "activity:add" ? (
                   <ActivityIndicator size="small" color={colors.white} />
@@ -296,10 +308,10 @@ export default function SettingsScreen() {
             {isLoadingActivityLabels ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color={colors.amber600} />
-                <Text style={styles.loadingText}>Loading activity labels...</Text>
+                <Text style={styles.loadingText}>Loading activity labels</Text>
               </View>
             ) : activityLabels.length === 0 ? (
-              <Text style={styles.emptyText}>No saved activity labels yet.</Text>
+              <Text style={styles.emptyText}>No activity labels yet.</Text>
             ) : (
               <View style={styles.labelList}>
                 {activityLabels.map((label) => {
@@ -352,6 +364,9 @@ export default function SettingsScreen() {
                           style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => void handleDeleteActivityLabel(label)}
                           disabled={isMutating}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete ${label.name}`}
+                          accessibilityHint="Removes this activity label"
                         >
                           <FontAwesome name="trash" size={12} color={colors.white} />
                         </Pressable>
@@ -373,7 +388,7 @@ export default function SettingsScreen() {
                 style={styles.input}
                 value={eventLabelInput}
                 onChangeText={setEventLabelInput}
-                placeholder="Add event label"
+                placeholder="Event label name"
                 placeholderTextColor={colors.stone400}
                 editable={!isMutating}
               />
@@ -381,6 +396,9 @@ export default function SettingsScreen() {
                 style={[styles.addButton, isMutating && styles.disabled]}
                 onPress={() => void handleAddEventLabel()}
                 disabled={isMutating}
+                accessibilityRole="button"
+                accessibilityLabel="Add event label"
+                accessibilityHint="Saves the event label you entered"
               >
                 {activeMutationKey === "event:add" ? (
                   <ActivityIndicator size="small" color={colors.white} />
@@ -393,10 +411,10 @@ export default function SettingsScreen() {
             {isLoadingEventLabels ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color={colors.amber600} />
-                <Text style={styles.loadingText}>Loading event labels...</Text>
+                <Text style={styles.loadingText}>Loading event labels</Text>
               </View>
             ) : eventLabels.length === 0 ? (
-              <Text style={styles.emptyText}>No saved event labels yet.</Text>
+              <Text style={styles.emptyText}>No event labels yet.</Text>
             ) : (
               <View style={styles.labelList}>
                 {eventLabels.map((label) => {
@@ -449,6 +467,9 @@ export default function SettingsScreen() {
                           style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => void handleDeleteEventLabel(label)}
                           disabled={isMutating}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete ${label.name}`}
+                          accessibilityHint="Removes this event label"
                         >
                           <FontAwesome name="trash" size={12} color={colors.white} />
                         </Pressable>
@@ -465,7 +486,13 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.section}>
             <SectionLabel>Account</SectionLabel>
-            <Pressable style={styles.signOutButton} onPress={() => void handleSignOut()}>
+            <Pressable
+              style={styles.signOutButton}
+              onPress={() => void handleSignOut()}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              accessibilityHint="Signs you out of your Awareday account"
+            >
               <Text style={styles.signOutButtonText}>Sign out</Text>
             </Pressable>
           </View>
@@ -480,15 +507,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: layout.contentMaxWidth,
     alignSelf: "center",
-    padding: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
     gap: spacing["2xl"],
     paddingBottom: spacing["4xl"],
   },
   section: { gap: spacing.md },
   slimTopCard: {
-    height: 96,
+    minHeight: 96,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
   },
@@ -503,9 +529,9 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
   errorText: { fontSize: fontSize.xs, color: colors.rose700 },
   emptyNotice: {
-    backgroundColor: "#fffaf3",
+    backgroundColor: colors.backgroundRaisedWarm,
     borderWidth: 1,
-    borderColor: "rgba(232, 207, 169, 0.9)",
+    borderColor: colors.borderAmberStrong,
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.xs,
@@ -520,7 +546,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderWidth: 1,
-    borderColor: "rgba(232, 207, 169, 0.7)",
+    borderColor: colors.borderAmberSoft,
     borderRadius: radius.xl,
     backgroundColor: colors.white,
     paddingHorizontal: spacing.md + 2,
@@ -554,7 +580,7 @@ const styles = StyleSheet.create({
   actionButton: {
     borderWidth: 1,
     borderColor: colors.borderAmber,
-    backgroundColor: "#fffbf7",
+    backgroundColor: colors.backgroundRaisedTint,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
@@ -564,8 +590,8 @@ const styles = StyleSheet.create({
   actionButtonPrimaryText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
   actionButtonWarning: { backgroundColor: colors.orange700, borderColor: colors.orange700 },
   actionButtonIconOnly: {
-    width: 30,
-    height: 30,
+    width: controlSize.md,
+    height: controlSize.md,
     paddingHorizontal: 0,
     paddingVertical: 0,
     borderRadius: radius.full,

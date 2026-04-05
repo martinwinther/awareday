@@ -46,6 +46,8 @@ yarn-error.*
 /docs
 AGENTS.md
 .impeccable.md
+.github/copilot-instructions.md
 
 # Netlify
 .netlify/
+docs/decisions.md

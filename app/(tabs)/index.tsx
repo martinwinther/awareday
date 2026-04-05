@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Platform, Modal } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Platform, Modal, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
@@ -24,21 +24,30 @@ import {
   createEventLabelIfMissing,
   deleteActivityEntry,
   deleteEventEntry,
-  listActivityEntries,
+  listActivityEntriesForRecentDays,
   listActivityLabels,
   listEventLabels,
   listTodayEventEntries,
 } from "@/src/lib/firestore/repositories";
-import { colors } from "@/src/theme/colors";
-import { spacing, radius, fontSize, controlSize } from "@/src/theme/spacing";
+import {
+  colors,
+  spacing,
+  radius,
+  fontSize,
+  controlSize,
+  layout,
+  getScreenHorizontalPadding,
+} from "@/src/theme";
 import { isOnLocalDay } from "@/src/lib/domain/local-day";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const fallbackActivityLabels = ["Work", "Walk dog", "Cooking"];
 const fallbackEventLabels = ["Coffee", "Water", "Energy drink"];
+const ACTIVITY_FETCH_WINDOW_DAYS = 14;
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { user } = useAuthUser();
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
@@ -55,12 +64,16 @@ export default function TodayScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const isCompactWidth = width < 380;
+  const isWideLayout = width >= layout.wideWebWidth;
+  const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+
   const loadActivities = useCallback(async (userId: string) => {
     setIsLoadingActivities(true);
     try {
-      setActivityEntries(await listActivityEntries(userId));
+      setActivityEntries(await listActivityEntriesForRecentDays(userId, ACTIVITY_FETCH_WINDOW_DAYS));
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not load activities.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not load your activities. Please try again.");
     } finally {
       setIsLoadingActivities(false);
     }
@@ -71,7 +84,7 @@ export default function TodayScreen() {
     try {
       setEventEntries(await listTodayEventEntries(userId));
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not load events.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not load your events. Please try again.");
     } finally {
       setIsLoadingEvents(false);
     }
@@ -142,11 +155,11 @@ export default function TodayScreen() {
       await createActivityEntry({ userId: user.uid, label: cleaned, action: "start" });
       try { await createActivityLabelIfMissing({ userId: user.uid, name: cleaned }); } catch {}
       setActivityLabelInput("");
-      showSuccess(`Started: ${cleaned}`);
+      showSuccess(`Started activity: ${cleaned}`);
       await loadActivities(user.uid);
       void loadActivityLabels(user.uid);
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not start activity.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not start that activity. Please try again.");
     } finally {
       setIsStartingActivity(false);
     }
@@ -159,10 +172,10 @@ export default function TodayScreen() {
     setErrorMessage(null);
     try {
       await createActivityEntry({ userId: user.uid, label: entry.label, action: "end" });
-      showSuccess(`Ended: ${entry.label}`);
+      showSuccess(`Ended activity: ${entry.label}`);
       await loadActivities(user.uid);
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not end activity.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not end that activity. Please try again.");
     } finally {
       setIsEndingActivity(false);
     }
@@ -177,11 +190,11 @@ export default function TodayScreen() {
       await createEventEntry({ userId: user.uid, label: cleaned });
       try { await createEventLabelIfMissing({ userId: user.uid, name: cleaned }); } catch {}
       setEventLabelInput("");
-      showSuccess(`Logged: ${cleaned}`);
+      showSuccess(`Logged event: ${cleaned}`);
       await loadEvents(user.uid);
       void loadEventLabels(user.uid);
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not log event.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not log that event. Please try again.");
     } finally {
       setIsSubmittingEvent(false);
     }
@@ -199,14 +212,14 @@ export default function TodayScreen() {
         await loadActivities(user.uid);
       }
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "Could not delete entry.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not delete that entry. Please try again.");
     }
   }, [loadActivities, loadEvents, user]);
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
 
   return (
-    <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + spacing.lg }]}> 
+    <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + spacing.lg, paddingHorizontal: contentHorizontalPadding }]}> 
 
       {successMessage ? (
         <View style={s.successBox}><Text style={s.successText}>{successMessage}</Text></View>
@@ -219,90 +232,92 @@ export default function TodayScreen() {
       <View style={s.quickStage}>
         <View style={s.quickStageHeader}>
           <SectionLabel>Quick log</SectionLabel>
-          <Text style={s.quickStageHint}>Capture now. Refine later.</Text>
+          <Text style={s.quickStageHint}>Log now. Edit later.</Text>
         </View>
 
-        {/* Activity quick log */}
-        <Card style={s.quickLaneCard}>
-          <View style={s.sectionHeader}>
-            <SectionLabel>Activity lane</SectionLabel>
-            <View style={s.badge}><Text style={s.badgeText}>{openActivitiesToday.length} open</Text></View>
-          </View>
-          <TextInput
-            style={s.input}
-            placeholder="What are you starting or ending?"
-            placeholderTextColor={colors.stone400}
-            value={activityLabelInput}
-            onChangeText={setActivityLabelInput}
-            editable={!isMutatingActivity}
-          />
-          <View style={s.buttonRow}>
-            <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
-              <Text style={s.buttonTextWhite}>{isStartingActivity ? "Starting..." : "Start activity"}</Text>
-            </Pressable>
-            <Pressable
-              style={[s.endButton, (isMutatingActivity || openActivitiesToday.length === 0) && s.disabled]}
-              onPress={() => {
-                const label = activityLabelInput.trim();
-                if (label.length > 0) {
-                  const match = openActivitiesToday.find((e) => e.normalizedLabel === normalizeLabelName(label));
-                  if (match) void handleEndActivity(match);
-                  else setErrorMessage(`No open activity found for "${label}".`);
-                } else if (openActivitiesToday.length > 0) {
-                  setShowEndActivityPicker(true);
-                }
-              }}
-              disabled={isMutatingActivity || openActivitiesToday.length === 0}
-            >
-              <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
-            </Pressable>
-          </View>
-          <Text style={s.helperText}>Leave input empty to pick from currently running activities.</Text>
-          {activityQuickLabels === null ? (
-            <ActivityIndicator color={colors.amber600} />
-          ) : (
-            <View>
-              <Text style={s.chipLabel}>Quick start</Text>
-              <View style={s.chipRow}>
-                {displayedActivityLabels.map((label) => (
-                  <Pressable key={label} style={[s.chip, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(label)} disabled={isMutatingActivity}>
-                    <Text style={s.chipText}>{label}</Text>
-                  </Pressable>
-                ))}
-              </View>
+        <View style={[s.quickLanes, isWideLayout && s.quickLanesWide]}>
+          {/* Activity quick log */}
+          <Card style={[s.quickLaneCard, isWideLayout && s.quickLaneCardWide]}>
+            <View style={s.sectionHeader}>
+              <SectionLabel>Activities</SectionLabel>
+              <View style={s.badge}><Text style={s.badgeText}>{openActivitiesToday.length} open</Text></View>
             </View>
-          )}
-        </Card>
+            <TextInput
+              style={s.input}
+              placeholder="Activity label"
+              placeholderTextColor={colors.stone400}
+              value={activityLabelInput}
+              onChangeText={setActivityLabelInput}
+              editable={!isMutatingActivity}
+            />
+            <View style={[s.buttonRow, isCompactWidth && s.buttonColumn]}>
+              <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
+                <Text style={s.buttonTextWhite}>{isStartingActivity ? "Starting..." : "Start activity"}</Text>
+              </Pressable>
+              <Pressable
+                style={[s.endButton, (isMutatingActivity || openActivitiesToday.length === 0) && s.disabled]}
+                onPress={() => {
+                  const label = activityLabelInput.trim();
+                  if (label.length > 0) {
+                    const match = openActivitiesToday.find((e) => e.normalizedLabel === normalizeLabelName(label));
+                    if (match) void handleEndActivity(match);
+                    else setErrorMessage(`No open activity matches "${label}". Choose one from the list below.`);
+                  } else if (openActivitiesToday.length > 0) {
+                    setShowEndActivityPicker(true);
+                  }
+                }}
+                disabled={isMutatingActivity || openActivitiesToday.length === 0}
+              >
+                <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
+              </Pressable>
+            </View>
+            <Text style={s.helperText}>Leave this blank to choose from open activities.</Text>
+            {activityQuickLabels === null ? (
+              <ActivityIndicator color={colors.amber600} />
+            ) : (
+              <View>
+                <Text style={s.chipLabel}>Quick start</Text>
+                <View style={s.chipRow}>
+                  {displayedActivityLabels.map((label) => (
+                    <Pressable key={label} style={[s.chip, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(label)} disabled={isMutatingActivity}>
+                      <Text style={s.chipText}>{label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+          </Card>
 
-        {/* Event quick log */}
-        <Card style={s.quickLaneCard}>
-          <SectionLabel>Event lane</SectionLabel>
-          <TextInput
-            style={s.input}
-            placeholder="What happened right now?"
-            placeholderTextColor={colors.stone400}
-            value={eventLabelInput}
-            onChangeText={setEventLabelInput}
-            editable={!isSubmittingEvent}
-          />
-          <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
-            <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log event"}</Text>
-          </Pressable>
-          {eventQuickLabels === null ? (
-            <ActivityIndicator color={colors.amber600} />
-          ) : (
-            <View>
-              <Text style={s.chipLabel}>Quick log</Text>
-              <View style={s.chipRow}>
-                {displayedEventLabels.map((label) => (
-                  <Pressable key={label} style={[s.chip, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(label)} disabled={isSubmittingEvent}>
-                    <Text style={s.chipText}>{label}</Text>
-                  </Pressable>
-                ))}
+          {/* Event quick log */}
+          <Card style={[s.quickLaneCard, isWideLayout && s.quickLaneCardWide]}>
+            <SectionLabel>Events</SectionLabel>
+            <TextInput
+              style={s.input}
+              placeholder="Event label"
+              placeholderTextColor={colors.stone400}
+              value={eventLabelInput}
+              onChangeText={setEventLabelInput}
+              editable={!isSubmittingEvent}
+            />
+            <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
+              <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log event"}</Text>
+            </Pressable>
+            {eventQuickLabels === null ? (
+              <ActivityIndicator color={colors.amber600} />
+            ) : (
+              <View>
+                <Text style={s.chipLabel}>Quick log</Text>
+                <View style={s.chipRow}>
+                  {displayedEventLabels.map((label) => (
+                    <Pressable key={label} style={[s.chip, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(label)} disabled={isSubmittingEvent}>
+                      <Text style={s.chipText}>{label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
-        </Card>
+            )}
+          </Card>
+        </View>
       </View>
 
       <View style={s.secondaryStack}>
@@ -315,7 +330,7 @@ export default function TodayScreen() {
           {isLoadingActivities ? (
             <ActivityIndicator color={colors.amber600} />
           ) : openActivitiesToday.length === 0 ? (
-            <Text style={s.emptyText}>No open activities right now. Start one above.</Text>
+            <Text style={s.emptyText}>No open activities. Start one above.</Text>
           ) : (
             openActivitiesToday.map((entry) => (
               <View key={entry.id} style={s.openActivityRow}>
@@ -323,7 +338,14 @@ export default function TodayScreen() {
                   <Text style={s.openActivityLabel}>{entry.label}</Text>
                   <Text style={s.openActivityTime}>Started {formatClockTime(entry.timestamp.toDate())}</Text>
                 </View>
-                <Pressable style={s.endSmallButton} onPress={() => void handleEndActivity(entry)} disabled={isEndingActivity}>
+                <Pressable
+                  style={s.endSmallButton}
+                  onPress={() => void handleEndActivity(entry)}
+                  disabled={isEndingActivity}
+                  accessibilityRole="button"
+                  accessibilityLabel={`End ${entry.label}`}
+                  accessibilityHint="Ends this open activity now"
+                >
                   <Text style={s.endSmallButtonText}>End</Text>
                 </Pressable>
               </View>
@@ -338,7 +360,7 @@ export default function TodayScreen() {
               {isLoadingActivities ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : todayTotals.length === 0 ? (
-                <Text style={s.emptyText}>No completed activities yet today.</Text>
+                <Text style={s.emptyText}>No completed activities yet.</Text>
               ) : (
                 todayTotals.map((total) => (
                   <View key={total.normalizedLabel} style={s.totalRow}>
@@ -356,7 +378,7 @@ export default function TodayScreen() {
               {isLoadingEvents ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : todayEventCounts.length === 0 ? (
-                <Text style={s.emptyText}>No events logged yet today.</Text>
+                <Text style={s.emptyText}>No events logged yet.</Text>
               ) : (
                 todayEventCounts.map((count) => (
                   <View key={count.normalizedLabel} style={s.totalRow}>
@@ -373,11 +395,11 @@ export default function TodayScreen() {
       {/* Timeline */}
       <Card>
         <View style={s.cardSection}>
-          <SectionLabel>Activity log</SectionLabel>
+          <SectionLabel>Today timeline</SectionLabel>
           {(isLoadingActivities || isLoadingEvents) ? (
             <ActivityIndicator color={colors.amber600} />
           ) : todayTimeline.length === 0 ? (
-            <Text style={s.emptyText}>No entries in your activity log yet.</Text>
+            <Text style={s.emptyText}>No entries yet. Start an activity or log an event above.</Text>
           ) : (
             todayTimeline.map((item) => {
               const entry = item.entry;
@@ -393,7 +415,13 @@ export default function TodayScreen() {
                   </View>
                   <View style={s.timelineRight}>
                     <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
-                    <Pressable style={s.deleteIconButton} onPress={() => void handleDeleteTimelineItem(item)}>
+                    <Pressable
+                      style={s.deleteIconButton}
+                      onPress={() => void handleDeleteTimelineItem(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${badgeLabel.toLowerCase()} entry for ${entry.label}`}
+                      accessibilityHint="Removes this entry from your timeline"
+                    >
                       <FontAwesome name="trash" size={12} color={colors.white} />
                     </Pressable>
                   </View>
@@ -409,12 +437,12 @@ export default function TodayScreen() {
       <Modal visible={showEndActivityPicker} transparent animationType="fade" onRequestClose={() => setShowEndActivityPicker(false)}>
         <View style={s.modalBackdrop}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>End running activity</Text>
-            <Text style={s.modalSubtitle}>Choose an activity to end now.</Text>
+            <Text style={s.modalTitle}>End an open activity</Text>
+            <Text style={s.modalSubtitle}>Choose which activity to end now.</Text>
 
             <View style={s.modalList}>
               {openActivitiesToday.length === 0 ? (
-                <Text style={s.emptyText}>No running activities found.</Text>
+                <Text style={s.emptyText}>No open activities found.</Text>
               ) : (
                 openActivitiesToday.map((entry) => (
                   <Pressable
@@ -422,6 +450,9 @@ export default function TodayScreen() {
                     style={[s.modalListItem, isEndingActivity && s.disabled]}
                     onPress={() => void handleEndActivity(entry)}
                     disabled={isEndingActivity}
+                    accessibilityRole="button"
+                    accessibilityLabel={`End ${entry.label}`}
+                    accessibilityHint="Ends this open activity"
                   >
                     <View style={s.modalListTextWrap}>
                       <Text style={s.modalListLabel}>{entry.label}</Text>
@@ -433,7 +464,14 @@ export default function TodayScreen() {
               )}
             </View>
 
-            <Pressable style={s.modalCancelButton} onPress={() => setShowEndActivityPicker(false)} disabled={isEndingActivity}>
+            <Pressable
+              style={s.modalCancelButton}
+              onPress={() => setShowEndActivityPicker(false)}
+              disabled={isEndingActivity}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              accessibilityHint="Close this picker without ending an activity"
+            >
               <Text style={s.modalCancelText}>Cancel</Text>
             </Pressable>
           </View>
@@ -447,9 +485,8 @@ const s = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
   content: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: layout.contentMaxWidth,
     alignSelf: "center",
-    paddingHorizontal: Platform.OS === "web" ? spacing["2xl"] : spacing.lg,
     paddingBottom: spacing["4xl"],
     gap: spacing["2xl"],
   },
@@ -464,6 +501,13 @@ const s = StyleSheet.create({
     borderColor: colors.borderAmber,
     padding: spacing.lg,
     gap: spacing.lg,
+  },
+  quickLanes: {
+    gap: spacing.lg,
+  },
+  quickLanesWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   quickStageHeader: {
     flexDirection: "row",
@@ -480,6 +524,9 @@ const s = StyleSheet.create({
   quickLaneCard: {
     backgroundColor: colors.backgroundCard,
     gap: spacing.md,
+  },
+  quickLaneCardWide: {
+    flex: 1,
   },
   secondaryStack: {
     gap: spacing.xl,
@@ -498,6 +545,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.backgroundLight,
   },
   buttonRow: { flexDirection: "row", gap: spacing.sm },
+  buttonColumn: { flexDirection: "column" },
   startButton: { flex: 1, backgroundColor: colors.emerald600, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
   endButton: { flex: 1, backgroundColor: colors.orange700, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
   primaryButton: { backgroundColor: colors.amber900, borderRadius: radius.md, height: controlSize.lg, alignItems: "center", justifyContent: "center" },
@@ -506,7 +554,7 @@ const s = StyleSheet.create({
   helperText: { fontSize: fontSize.xs, color: colors.stone500 },
   chipLabel: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone500, marginBottom: spacing.sm },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  chip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber300, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  chip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber300, borderRadius: radius.full, minHeight: controlSize.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, justifyContent: "center" },
   chipText: { fontSize: fontSize.sm, color: colors.stone700, fontWeight: "600" },
   countText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone600 },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
@@ -514,7 +562,7 @@ const s = StyleSheet.create({
   openActivityInfo: { flex: 1, gap: 2 },
   openActivityLabel: { fontSize: fontSize.sm, fontWeight: "600", color: colors.stone900 },
   openActivityTime: { fontSize: fontSize.xs, color: colors.stone500 },
-  endSmallButton: { backgroundColor: colors.orange700, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  endSmallButton: { backgroundColor: colors.orange700, borderRadius: radius.sm, minHeight: controlSize.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: "center" },
   endSmallButtonText: { color: colors.white, fontSize: fontSize.xs, fontWeight: "600" },
   summaryGroup: { gap: spacing.lg },
   summarySection: { gap: spacing.sm },
@@ -531,8 +579,8 @@ const s = StyleSheet.create({
   timelineLabel: { fontSize: fontSize.sm, color: colors.stone800, flex: 1 },
   timelineTime: { fontSize: fontSize.xs, color: colors.stone500 },
   deleteIconButton: {
-    width: 24,
-    height: 24,
+    width: controlSize.md,
+    height: controlSize.md,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
@@ -540,7 +588,7 @@ const s = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.42)",
+    backgroundColor: colors.overlayBackdrop,
     justifyContent: "center",
     padding: spacing.lg,
   },

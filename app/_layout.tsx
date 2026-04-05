@@ -1,30 +1,16 @@
-import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import { colors } from "@/src/theme/colors";
-
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { user, loading } = useAuthUser();
 
-  const [fontsLoaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
-
   useEffect(() => {
-    if (fontsLoaded && !loading) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, loading]);
-
-  useEffect(() => {
-    if (loading || !fontsLoaded) return;
+    if (loading) return;
 
     const inAuthGroup = segments[0] === "sign-in";
 
@@ -33,9 +19,9 @@ export default function RootLayout() {
     } else if (user && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [user, loading, segments, fontsLoaded, router]);
+  }, [user, loading, segments, router]);
 
-  if (!fontsLoaded || loading) {
+  if (loading) {
     return null;
   }
 

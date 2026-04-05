@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...Platform.select({
       ios: {
-        shadowColor: "rgba(68, 44, 24, 0.28)",
+        shadowColor: colors.shadowCard,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 1,
         shadowRadius: 20,

@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, spacing, fontSize } from "@/src/theme";
+import { colors, spacing, fontSize, layout } from "@/src/theme";
 
 type ScreenHeaderProps = {
   title: string;
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: layout.contentMaxWidth,
     alignSelf: "center",
     gap: spacing.md,
   },

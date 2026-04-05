@@ -72,6 +72,29 @@ export async function listActivityEntries(userId: string): Promise<ActivityEntry
   }));
 }
 
+export async function listActivityEntriesForRecentDays(
+  userId: string,
+  daysBack: number = 14,
+  now: Date = new Date()
+): Promise<ActivityEntry[]> {
+  const startDay = new Date(now);
+  startDay.setDate(startDay.getDate() - Math.max(daysBack, 0));
+  const { startOfDay } = getLocalDayBounds(startDay);
+
+  const collectionRef = activityEntriesCollectionRef(userId);
+  const entriesQuery = query(
+    collectionRef,
+    where("timestamp", ">=", Timestamp.fromDate(startOfDay)),
+    orderBy("timestamp", "desc")
+  );
+  const snapshot = await getDocs(entriesQuery);
+
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  }));
+}
+
 export async function listActivityEntriesForDay(userId: string, day: Date): Promise<ActivityEntry[]> {
   const { startOfDay, startOfNextDay } = getLocalDayBounds(day);
 

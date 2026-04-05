@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     ...Platform.select({
       ios: {
-        shadowColor: "rgba(94, 66, 48, 0.2)",
+        shadowColor: colors.shadowTabBar,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 1,
         shadowRadius: 12,

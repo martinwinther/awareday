@@ -17,11 +17,11 @@ function getSignInErrorMessage(error: unknown): string {
     case "auth/invalid-credential": return "Email or password is incorrect.";
     case "auth/email-already-in-use": return "That email is already in use. Try signing in instead.";
     case "auth/weak-password": return "Password is too weak. Use at least 6 characters.";
-    case "auth/popup-closed-by-user": return "Google sign-in was closed before completion.";
-    case "auth/popup-blocked": return "Google sign-in popup was blocked by the browser.";
+    case "auth/popup-closed-by-user": return "Google sign-in was closed before it finished. Please try again.";
+    case "auth/popup-blocked": return "Your browser blocked Google sign-in. Allow popups and try again.";
     case "auth/operation-not-allowed": return "This sign-in method is not enabled.";
     case "auth/unauthorized-domain": return "This domain is not authorized for Google sign-in.";
-    default: return error.message;
+    default: return "We could not sign you in. Please try again.";
   }
 }
 
@@ -92,7 +92,7 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.features}>
-          {["Fast thumb-first logging", "Activity time from real timestamps", "Daily event rhythm and timeline"].map((text) => (
+          {["Fast thumb-first logging", "Activity time from real timestamps", "Daily event counts and timeline"].map((text) => (
             <View key={text} style={styles.featureChip}><Text style={styles.featureText}>{text}</Text></View>
           ))}
         </View>
@@ -129,11 +129,25 @@ export default function SignInScreen() {
               placeholderTextColor={colors.stone400}
             />
           </View>
-          <Pressable style={[styles.primaryButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signin")} disabled={isDisabled}>
+          <Pressable
+            style={[styles.primaryButton, isDisabled && styles.disabled]}
+            onPress={() => void handleEmailSignIn("signin")}
+            disabled={isDisabled}
+            accessibilityRole="button"
+            accessibilityLabel="Sign in with email"
+            accessibilityHint="Sign in to your Awareday account using email and password"
+          >
             <Text style={styles.primaryButtonText}>{isSubmitting ? "Signing in..." : "Sign in with email"}</Text>
           </Pressable>
-          <Pressable style={[styles.secondaryButton, isDisabled && styles.disabled]} onPress={() => void handleEmailSignIn("signup")} disabled={isDisabled}>
-            <Text style={styles.ghostButtonText}>Create account with email</Text>
+          <Pressable
+            style={[styles.secondaryButton, isDisabled && styles.disabled]}
+            onPress={() => void handleEmailSignIn("signup")}
+            disabled={isDisabled}
+            accessibilityRole="button"
+            accessibilityLabel="Create account"
+            accessibilityHint="Create a new Awareday account with your email and password"
+          >
+            <Text style={styles.ghostButtonText}>Create account</Text>
           </Pressable>
         </View>
 
@@ -143,11 +157,18 @@ export default function SignInScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        <Pressable style={[styles.ghostButton, isDisabled && styles.disabled]} onPress={() => void handleGoogleSignIn()} disabled={isDisabled}>
+        <Pressable
+          style={[styles.ghostButton, isDisabled && styles.disabled]}
+          onPress={() => void handleGoogleSignIn()}
+          disabled={isDisabled}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Google"
+          accessibilityHint="Sign in to your Awareday account with Google"
+        >
           <Text style={styles.ghostButtonText}>{isSubmitting ? "Signing in..." : "Continue with Google"}</Text>
         </Pressable>
 
-        <Text style={styles.footnote}>Pick email or Google to enter your private day log.</Text>
+        <Text style={styles.footnote}>Use email or Google to access your private day log.</Text>
       </View>
     </ScrollView>
   );
@@ -166,7 +187,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
     ...Platform.select({
-      ios: { shadowColor: "rgba(63, 42, 26, 0.32)", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 1, shadowRadius: 24 },
+      ios: { shadowColor: colors.shadowElevated, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 1, shadowRadius: 24 },
       android: { elevation: 5 },
     }),
   },

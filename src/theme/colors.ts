@@ -9,6 +9,9 @@ export const colors = {
   backgroundCard: "#fff8f0",
   backgroundSoft: "#f8eddd",
   backgroundMuted: "#ece0cf",
+  backgroundRaisedWarm: "#fffaf3",
+  backgroundRaisedTint: "#fffbf7",
+  backgroundAmberSoft: "#fff8ef",
 
   // Amber accent scale
   amber900: "#6a3e1c",
@@ -47,7 +50,19 @@ export const colors = {
   // Borders and dividers
   borderLight: "rgba(228, 204, 176, 0.64)",
   borderAmber: "rgba(214, 179, 137, 0.8)",
+  borderAmberStrong: "rgba(232, 207, 169, 0.9)",
+  borderAmberSoft: "rgba(232, 207, 169, 0.7)",
   divider: "rgba(214, 179, 137, 0.48)",
+
+  // Surface accents
+  eventPillBackground: "rgba(238, 239, 255, 0.95)",
+  eventPillBorder: "rgba(90, 90, 200, 0.85)",
+  overlayBackdrop: "rgba(15, 23, 42, 0.42)",
+
+  // Elevation shadows
+  shadowCard: "rgba(68, 44, 24, 0.28)",
+  shadowElevated: "rgba(63, 42, 26, 0.32)",
+  shadowTabBar: "rgba(94, 66, 48, 0.2)",
 
   // Tab bar
   tabBarBackground: "#faf0e4",
