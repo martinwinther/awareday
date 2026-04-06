@@ -64,6 +64,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.tabBarBorder,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
     ...Platform.select({
       ios: {
         shadowColor: colors.shadowTabBar,
