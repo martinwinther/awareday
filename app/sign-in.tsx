@@ -92,7 +92,7 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.features}>
-          {["Fast thumb-first logging", "Activity time from real timestamps", "Daily event counts and timeline"].map((text) => (
+          {["Fast thumb-first logging", "Activity time from real timestamps", "Daily check-in counts and timeline"].map((text) => (
             <View key={text} style={styles.featureChip}><Text style={styles.featureText}>{text}</Text></View>
           ))}
         </View>

@@ -1,23 +1,23 @@
 # Awareday
 
-Awareday is a mobile app for logging daily activities and one-off events with timestamps, so users can understand where their time goes and notice recurring habits.
+Awareday is a mobile app for logging daily activities and recurring quick check-ins with timestamps, so users can understand where their time goes and notice recurring habits.
 
 ## MVP feature set
 
 - Firebase-authenticated app access
 - Activity logging as raw `start` / `end` timestamp entries
-- Event logging as one-off timestamp entries
-- Editing and deleting logged activity/event entries
+- Check-in logging as one-tap timestamp entries (stored as event entries)
+- Editing and deleting logged activity/check-in entries
 - Reusable quick-action labels (plus free-text logging)
 - Overlapping activities support
 - Daily activity totals derived from matched start/end pairs
-- Daily event counts
+- Daily check-in counts
 - Chronological daily timeline
 
 ## Product guardrails
 
 - Awareday is a timestamp logger, not a live timer-first app.
-- Activities and events are separate concepts.
+- Activities and check-ins are separate concepts.
 - Activity duration is always derived from raw entries.
 
 ## Tech stack

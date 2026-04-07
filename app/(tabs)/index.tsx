@@ -42,7 +42,7 @@ import { isOnLocalDay } from "@/src/lib/domain/local-day";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const fallbackActivityLabels = ["Work", "Walk dog", "Cooking"];
-const fallbackEventLabels = ["Coffee", "Water", "Energy drink"];
+const fallbackEventLabels = ["Coffee", "Water", "Medication", "Mood check", "Symptom check"];
 const ACTIVITY_FETCH_WINDOW_DAYS = 14;
 
 export default function TodayScreen() {
@@ -84,7 +84,7 @@ export default function TodayScreen() {
     try {
       setEventEntries(await listTodayEventEntries(userId));
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not load your events. Please try again.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not load your check-ins. Please try again.");
     } finally {
       setIsLoadingEvents(false);
     }
@@ -190,11 +190,11 @@ export default function TodayScreen() {
       await createEventEntry({ userId: user.uid, label: cleaned });
       try { await createEventLabelIfMissing({ userId: user.uid, name: cleaned }); } catch {}
       setEventLabelInput("");
-      showSuccess(`Logged event: ${cleaned}`);
+      showSuccess(`Logged check-in: ${cleaned}`);
       await loadEvents(user.uid);
       void loadEventLabels(user.uid);
     } catch (error) {
-      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not log that event. Please try again.");
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not log that check-in. Please try again.");
     } finally {
       setIsSubmittingEvent(false);
     }
@@ -288,25 +288,26 @@ export default function TodayScreen() {
             )}
           </Card>
 
-          {/* Event quick log */}
+          {/* Check-in quick log */}
           <Card style={[s.quickLaneCard, isWideLayout && s.quickLaneCardWide]}>
-            <SectionLabel>Events</SectionLabel>
+            <SectionLabel>Counters / check-ins</SectionLabel>
             <TextInput
               style={s.input}
-              placeholder="Event label"
+              placeholder="Check-in label"
               placeholderTextColor={colors.stone400}
               value={eventLabelInput}
               onChangeText={setEventLabelInput}
               editable={!isSubmittingEvent}
             />
+            <Text style={s.helperText}>Use this for quick recurring logs like coffee, water, medication, mood check, or symptom check.</Text>
             <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
-              <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log event"}</Text>
+              <Text style={s.buttonTextWhite}>{isSubmittingEvent ? "Logging..." : "Log check-in"}</Text>
             </Pressable>
             {eventQuickLabels === null ? (
               <ActivityIndicator color={colors.amber600} />
             ) : (
               <View>
-                <Text style={s.chipLabel}>Quick log</Text>
+                <Text style={s.chipLabel}>Quick check-ins</Text>
                 <View style={s.chipRow}>
                   {displayedEventLabels.map((label) => (
                     <Pressable key={label} style={[s.chip, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(label)} disabled={isSubmittingEvent}>
@@ -374,11 +375,11 @@ export default function TodayScreen() {
             <View style={s.summaryDivider} />
 
             <View style={s.summarySection}>
-              <SectionLabel>Event counts</SectionLabel>
+              <SectionLabel>Check-in counts</SectionLabel>
               {isLoadingEvents ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : todayEventCounts.length === 0 ? (
-                <Text style={s.emptyText}>No events logged yet.</Text>
+                <Text style={s.emptyText}>No check-ins logged yet.</Text>
               ) : (
                 todayEventCounts.map((count) => (
                   <View key={count.normalizedLabel} style={s.totalRow}>
@@ -399,12 +400,12 @@ export default function TodayScreen() {
           {(isLoadingActivities || isLoadingEvents) ? (
             <ActivityIndicator color={colors.amber600} />
           ) : todayTimeline.length === 0 ? (
-            <Text style={s.emptyText}>No entries yet. Start an activity or log an event above.</Text>
+            <Text style={s.emptyText}>No entries yet. Start an activity or log a check-in above.</Text>
           ) : (
             todayTimeline.map((item) => {
               const entry = item.entry;
               const badgeColor = item.kind === "activity-start" ? colors.emerald600 : item.kind === "activity-end" ? colors.amber600 : colors.indigo600;
-              const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Event";
+              const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Check-in";
               return (
                 <View key={`${item.kind}-${entry.id}`} style={s.timelineRow}>
                   <View style={s.timelineLeft}>

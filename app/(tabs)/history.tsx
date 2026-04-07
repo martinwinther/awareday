@@ -258,7 +258,7 @@ function DaySchedule({
         })}
         <View style={styles.emptyNoticeBox}>
           <Text style={styles.emptyText}>No entries for this day yet.</Text>
-          <Text style={styles.emptyDescription}>Activity blocks and event markers appear here once you log that day.</Text>
+          <Text style={styles.emptyDescription}>Activity blocks and check-in markers appear here once you log that day.</Text>
         </View>
       </View>
     );
@@ -570,11 +570,11 @@ export default function HistoryScreen() {
             <View style={styles.summaryDivider} />
 
             <View style={styles.summarySection}>
-              <SectionLabel>Event counts</SectionLabel>
+              <SectionLabel>Check-in counts</SectionLabel>
               {isLoading ? (
                 <ActivityIndicator color={colors.amber600} />
               ) : eventCounts.length === 0 ? (
-                <Text style={styles.emptyText}>No events logged for this day.</Text>
+                <Text style={styles.emptyText}>No check-ins logged for this day.</Text>
               ) : (
                 eventCounts.map((count) => (
                   <View key={count.normalizedLabel} style={styles.totalRow}>
@@ -597,7 +597,7 @@ export default function HistoryScreen() {
             ) : (
               timelineItems.map((item) => {
                 const entry = item.entry;
-                const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Event";
+                const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Check-in";
                 const badgeStyle = item.kind === "activity-start" ? styles.badgeStart : item.kind === "activity-end" ? styles.badgeEnd : styles.badgeEvent;
                 const badgeTextStyle = item.kind === "activity-start" ? styles.badgeTextStart : item.kind === "activity-end" ? styles.badgeTextEnd : styles.badgeTextEvent;
                 return (

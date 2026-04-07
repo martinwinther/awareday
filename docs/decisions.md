@@ -94,3 +94,8 @@
 - Decision: Apply a flagship-level polish pass focused on interaction accessibility metadata and semantic elevation tokens.
 - Reason: The feature set was functionally complete, but icon-heavy and compact controls still had uneven screen-reader affordance and elevation colors were still partly one-off.
 - Consequences: Primary account, label, and timeline actions now expose clearer accessibility labels and hints across screens, and core elevated surfaces use shared theme shadow tokens for more consistent visual behavior.
+
+- Date: 2026-04-07
+- Decision: Reframe the user-facing event experience as counters/check-ins while preserving existing event data schema and repository APIs.
+- Reason: Most recurring quick logs are countable check-ins (coffee, water, medication, mood check, symptom check), and this framing is clearer than generic one-off events for in-the-moment mobile use.
+- Consequences: UI copy and defaults now guide users toward meaningful recurring check-ins, existing Firestore collections (`eventLabels`, `eventEntries`) and behavior remain unchanged, and no migration is required for existing logged data.

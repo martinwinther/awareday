@@ -78,7 +78,7 @@ export default function SettingsScreen() {
     try {
       setEventLabels(await listEventLabels(userId));
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Could not load event labels."));
+      setErrorMessage(getErrorMessage(error, "Could not load check-in labels."));
       setEventLabels([]);
     } finally {
       setIsLoadingEventLabels(false);
@@ -181,7 +181,7 @@ export default function SettingsScreen() {
   const handleAddEventLabel = async () => {
     if (!user) return;
     const cleaned = eventLabelInput.trim();
-    if (cleaned.length === 0) { setErrorMessage("Enter an event label to save it."); return; }
+    if (cleaned.length === 0) { setErrorMessage("Enter a check-in label to save it."); return; }
 
     setActiveMutationKey("event:add");
     setErrorMessage(null);
@@ -190,7 +190,7 @@ export default function SettingsScreen() {
       setEventLabelInput("");
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "We could not save that event label. Please try again."));
+      setErrorMessage(getErrorMessage(error, "We could not save that check-in label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -199,11 +199,11 @@ export default function SettingsScreen() {
   const handleSaveEventLabel = async (labelId: string) => {
     if (!user) return;
     const cleaned = editingEventLabelInput.trim();
-    if (cleaned.length === 0) { setErrorMessage("Event labels cannot be empty."); return; }
+    if (cleaned.length === 0) { setErrorMessage("Check-in labels cannot be empty."); return; }
 
     const normalizedName = normalizeLabelName(cleaned);
     const isDuplicate = eventLabels.some((l) => l.id !== labelId && l.normalizedName === normalizedName);
-    if (isDuplicate) { setErrorMessage("That event label already exists."); return; }
+    if (isDuplicate) { setErrorMessage("That check-in label already exists."); return; }
 
     setActiveMutationKey(`event:save:${labelId}`);
     setErrorMessage(null);
@@ -213,7 +213,7 @@ export default function SettingsScreen() {
       setEditingEventLabelInput("");
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "We could not update that event label. Please try again."));
+      setErrorMessage(getErrorMessage(error, "We could not update that check-in label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -234,7 +234,7 @@ export default function SettingsScreen() {
       }
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "We could not delete that event label. Please try again."));
+      setErrorMessage(getErrorMessage(error, "We could not delete that check-in label. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -263,7 +263,7 @@ export default function SettingsScreen() {
             {hasNoSavedLabels ? (
               <View style={styles.emptyNotice}>
                 <Text style={styles.emptyTitle}>No saved labels yet.</Text>
-                <Text style={styles.emptyDescription}>Add activity and event labels below for faster logging on Today.</Text>
+                <Text style={styles.emptyDescription}>Add activity and check-in labels below for faster logging on Today.</Text>
               </View>
             ) : null}
           </View>
@@ -379,16 +379,16 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* Event labels */}
+        {/* Check-in labels */}
         <Card>
           <View style={styles.section}>
-            <SectionLabel>Event labels</SectionLabel>
+            <SectionLabel>Check-in labels</SectionLabel>
             <View style={styles.addForm}>
               <TextInput
                 style={styles.input}
                 value={eventLabelInput}
                 onChangeText={setEventLabelInput}
-                placeholder="Event label name"
+                placeholder="Check-in label name"
                 placeholderTextColor={colors.stone400}
                 editable={!isMutating}
               />
@@ -397,8 +397,8 @@ export default function SettingsScreen() {
                 onPress={() => void handleAddEventLabel()}
                 disabled={isMutating}
                 accessibilityRole="button"
-                accessibilityLabel="Add event label"
-                accessibilityHint="Saves the event label you entered"
+                accessibilityLabel="Add check-in label"
+                accessibilityHint="Saves the check-in label you entered"
               >
                 {activeMutationKey === "event:add" ? (
                   <ActivityIndicator size="small" color={colors.white} />
@@ -411,10 +411,10 @@ export default function SettingsScreen() {
             {isLoadingEventLabels ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color={colors.amber600} />
-                <Text style={styles.loadingText}>Loading event labels</Text>
+                <Text style={styles.loadingText}>Loading check-in labels</Text>
               </View>
             ) : eventLabels.length === 0 ? (
-              <Text style={styles.emptyText}>No event labels yet.</Text>
+              <Text style={styles.emptyText}>No check-in labels yet.</Text>
             ) : (
               <View style={styles.labelList}>
                 {eventLabels.map((label) => {
@@ -469,7 +469,7 @@ export default function SettingsScreen() {
                           disabled={isMutating}
                           accessibilityRole="button"
                           accessibilityLabel={`Delete ${label.name}`}
-                          accessibilityHint="Removes this event label"
+                          accessibilityHint="Removes this check-in label"
                         >
                           <FontAwesome name="trash" size={12} color={colors.white} />
                         </Pressable>
