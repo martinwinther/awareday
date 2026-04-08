@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, Modal, TextInput, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
+import { Timestamp } from "firebase/firestore";
 import { Card } from "@/src/components/card";
+import { DaySchedule as SharedDaySchedule } from "@/src/components/day-schedule";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
@@ -17,7 +19,14 @@ import {
   type DayViewActivityBlock,
   type DayViewEventMarker,
 } from "@/src/lib/domain";
-import { listActivityEntriesForDay, listEventEntriesForDay } from "@/src/lib/firestore/repositories";
+import {
+  deleteActivityEntry,
+  deleteEventEntry,
+  listActivityEntriesForDay,
+  listEventEntriesForDay,
+  updateActivityEntry,
+  updateEventEntry,
+} from "@/src/lib/firestore/repositories";
 import {
   colors,
   spacing,
@@ -58,347 +67,37 @@ function formatSelectedDay(day: Date): string {
   }).format(day);
 }
 
-const ACTIVITY_COLORS = [
-  colors.emerald600,
-  colors.indigo600,
-  colors.amber600,
-  colors.orange700,
-  colors.rose700,
-];
+type EditableScheduleEntry =
+  | { kind: "activity"; entry: ActivityEntry }
+  | { kind: "event"; entry: EventEntry };
 
-function getActivityColor(index: number): string {
-  return ACTIVITY_COLORS[index % ACTIVITY_COLORS.length];
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const value = hex.replace("#", "");
-  const normalized = value.length === 3
-    ? value.split("").map((char) => `${char}${char}`).join("")
-    : value;
-
-  const red = Number.parseInt(normalized.slice(0, 2), 16);
-  const green = Number.parseInt(normalized.slice(2, 4), 16);
-  const blue = Number.parseInt(normalized.slice(4, 6), 16);
-
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-}
-
-type DisplaySeed = {
-  id: string;
-  startMinute: number;
-  endMinute: number;
+type ActivityBlockEditChoice = {
+  label: string;
+  startEntry: ActivityEntry;
+  endEntry: ActivityEntry;
 };
 
-type DisplayLanePlacement = {
-  laneIndex: number;
-  laneCount: number;
-  laneSpan: number;
-};
-
-function seedsOverlap(left: DisplaySeed, right: DisplaySeed): boolean {
-  return left.startMinute < right.endMinute && right.startMinute < left.endMinute;
+function formatEditorTime(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
-function buildDisplayLaneMap(
-  blocks: DayViewActivityBlock[],
-  firstHour: number,
-): Map<string, DisplayLanePlacement> {
-  const seeds: DisplaySeed[] = blocks
-    .map((block) => ({
-      id: block.id,
-      startMinute: (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes(),
-      endMinute: (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes(),
-    }))
-    .sort((left, right) => {
-      if (left.startMinute !== right.startMinute) {
-        return left.startMinute - right.startMinute;
-      }
+function parseEditorTime(value: string): { hours: number; minutes: number } | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
 
-      return left.endMinute - right.endMinute;
-    });
-
-  const clusters: DisplaySeed[][] = [];
-  let currentCluster: DisplaySeed[] = [];
-  let clusterEndMinute = -1;
-
-  for (const seed of seeds) {
-    if (currentCluster.length === 0 || seed.startMinute < clusterEndMinute) {
-      currentCluster.push(seed);
-      clusterEndMinute = Math.max(clusterEndMinute, seed.endMinute);
-      continue;
-    }
-
-    clusters.push(currentCluster);
-    currentCluster = [seed];
-    clusterEndMinute = seed.endMinute;
+  if (!match) {
+    return null;
   }
 
-  if (currentCluster.length > 0) {
-    clusters.push(currentCluster);
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
   }
 
-  const laneMap = new Map<string, DisplayLanePlacement>();
-
-  for (const cluster of clusters) {
-    const laneEndMinutes: number[] = [];
-    const laneById = new Map<string, number>();
-    const itemsByLane = new Map<number, DisplaySeed[]>();
-
-    for (const seed of cluster) {
-      let laneIndex = -1;
-
-      for (let lane = 0; lane < laneEndMinutes.length; lane += 1) {
-        if (laneEndMinutes[lane] <= seed.startMinute) {
-          laneIndex = lane;
-          break;
-        }
-      }
-
-      if (laneIndex === -1) {
-        laneIndex = laneEndMinutes.length;
-        laneEndMinutes.push(seed.endMinute);
-      } else {
-        laneEndMinutes[laneIndex] = seed.endMinute;
-      }
-
-      laneById.set(seed.id, laneIndex);
-      const laneItems = itemsByLane.get(laneIndex) ?? [];
-      laneItems.push(seed);
-      itemsByLane.set(laneIndex, laneItems);
-    }
-
-    const laneCount = Math.max(laneEndMinutes.length, 1);
-
-    for (const seed of cluster) {
-      const laneIndex = laneById.get(seed.id) ?? 0;
-      let laneSpan = 1;
-
-      for (let lane = laneIndex + 1; lane < laneCount; lane += 1) {
-        const laneItems = itemsByLane.get(lane) ?? [];
-        const hasConflict = laneItems.some((laneItem) => seedsOverlap(seed, laneItem));
-
-        if (hasConflict) {
-          break;
-        }
-
-        laneSpan += 1;
-      }
-
-      laneMap.set(seed.id, {
-        laneIndex,
-        laneCount,
-        laneSpan,
-      });
-    }
-  }
-
-  return laneMap;
-}
-
-function DaySchedule({
-  activityBlocks,
-  eventMarkers,
-}: {
-  activityBlocks: DayViewActivityBlock[];
-  eventMarkers: DayViewEventMarker[];
-}) {
-  const hasEntries = activityBlocks.length > 0 || eventMarkers.length > 0;
-  const leftAxisWidth = 64;
-  const rightEventRailWidth = 106;
-  const minBlockHeight = 16;
-  const laneGap = 3;
-  const [scheduleWidth, setScheduleWidth] = useState(0);
-
-  const hours = useMemo(() => {
-    if (!hasEntries) return [9, 10, 11, 12];
-
-    const allHours = new Set<number>();
-
-    for (const block of activityBlocks) {
-      const startHour = block.startTimestamp.getHours();
-      const endHour = block.endTimestamp.getHours();
-      for (let hour = startHour; hour <= endHour; hour += 1) {
-        allHours.add(hour);
-      }
-    }
-
-    for (const marker of eventMarkers) {
-      allHours.add(marker.timestamp.getHours());
-    }
-
-    const sorted = Array.from(allHours).sort((left, right) => left - right);
-    const first = Math.max(0, (sorted[0] ?? 9) - 1);
-    const last = Math.min(23, (sorted[sorted.length - 1] ?? 12) + 1);
-    const result: number[] = [];
-
-    for (let hour = first; hour <= last; hour += 1) {
-      result.push(hour);
-    }
-
-    return result;
-  }, [activityBlocks, eventMarkers, hasEntries]);
-
-  const firstHour = hours[0] ?? 0;
-  const displayLaneMap = useMemo(
-    () => buildDisplayLaneMap(activityBlocks, firstHour),
-    [activityBlocks, firstHour],
-  );
-
-  if (!hasEntries) {
-    return (
-      <View style={styles.timelinePreviewEmpty}>
-        {hours.map((hour) => {
-          const label = new Date(2000, 0, 1, hour).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-          return (
-            <View key={hour} style={styles.timelineHourEmpty}>
-              <Text style={styles.timelineHourText}>{label}</Text>
-              <View style={styles.timelineLine} />
-            </View>
-          );
-        })}
-        <View style={styles.emptyNoticeBox}>
-          <Text style={styles.emptyText}>No entries for this day yet.</Text>
-          <Text style={styles.emptyDescription}>Activity blocks and check-in markers appear here once you log that day.</Text>
-        </View>
-      </View>
-    );
-  }
-
-  const lastHour = hours[hours.length - 1] ?? firstHour;
-  const totalMinutes = (lastHour - firstHour + 1) * 60;
-  const hourHeight = 48;
-  const totalHeight = hours.length * hourHeight;
-  const activityCanvasWidth = Math.max(
-    scheduleWidth - leftAxisWidth - rightEventRailWidth - spacing.lg,
-    180,
-  );
-
-  return (
-    <View
-      style={[styles.timelinePreview, { height: totalHeight + spacing.md }]}
-      onLayout={(event) => {
-        const nextWidth = event.nativeEvent.layout.width;
-        setScheduleWidth((currentWidth) => (
-          currentWidth === nextWidth ? currentWidth : nextWidth
-        ));
-      }}
-    >
-      {hours.map((hour) => {
-        const label = new Date(2000, 0, 1, hour).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-        const top = ((hour - firstHour) * 60 / totalMinutes) * totalHeight;
-
-        return (
-          <View key={hour} style={[styles.timelineHour, { position: "absolute", top, left: 0, right: 0 }]}>
-            <Text style={styles.timelineHourText}>{label}</Text>
-            <View style={styles.timelineLine} />
-          </View>
-        );
-      })}
-
-      <View
-        style={[
-          styles.activityCanvas,
-          {
-            left: leftAxisWidth + spacing.sm,
-            width: activityCanvasWidth,
-            height: totalHeight,
-          },
-        ]}
-      >
-        {activityBlocks.map((block, idx) => {
-          const startMinute = (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes();
-          const endMinute = (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes();
-          const placement = displayLaneMap.get(block.id) ?? { laneIndex: 0, laneCount: 1, laneSpan: 1 };
-
-          const top = (startMinute / totalMinutes) * totalHeight + 1;
-          const height = Math.max(((endMinute - startMinute) / totalMinutes) * totalHeight - 2, minBlockHeight);
-          const laneWidthPx = activityCanvasWidth / placement.laneCount;
-          const left = placement.laneIndex * laneWidthPx + laneGap / 2;
-          const width = Math.max((laneWidthPx * placement.laneSpan) - laneGap, 14);
-
-          const baseColor = getActivityColor(idx);
-          const hasRoomForText = width >= 62;
-          const hasRoomForCompact = width >= 34;
-          const showStandardLabel = height >= 18 && hasRoomForText;
-          const showCompactLabel = !showStandardLabel && height >= 13 && hasRoomForCompact;
-          const compactLabel = width < 56
-            ? block.label.slice(0, 2).toUpperCase()
-            : `${block.label.slice(0, 14)}${block.label.length > 14 ? "..." : ""}`;
-
-          return (
-            <View
-              key={block.id}
-              style={{
-                position: "absolute",
-                top,
-                left,
-                width,
-                height,
-                backgroundColor: hexToRgba(baseColor, 0.24),
-                borderColor: hexToRgba(baseColor, 0.9),
-                borderWidth: 1,
-                borderRadius: radius.sm,
-                paddingHorizontal: spacing.xs,
-                paddingVertical: height < 18 ? 1 : 2,
-                justifyContent: "center",
-              }}
-            >
-              {showStandardLabel ? (
-                <Text style={{ fontSize: fontSize.caption, color: colors.stone900, fontWeight: "600" }} numberOfLines={1}>
-                  {block.label}
-                </Text>
-              ) : showCompactLabel ? (
-                <Text style={{ fontSize: 10, color: colors.stone900, fontWeight: "700" }} numberOfLines={1}>
-                  {compactLabel}
-                </Text>
-              ) : (
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: hexToRgba(baseColor, 0.95) }} />
-              )}
-            </View>
-          );
-        })}
-      </View>
-
-      <View
-        style={[
-          styles.eventRail,
-          {
-            right: spacing.xs,
-            width: rightEventRailWidth - spacing.xs,
-            height: totalHeight,
-          },
-        ]}
-      >
-        {eventMarkers.map((marker) => {
-          const minute = (marker.timestamp.getHours() - firstHour) * 60 + marker.timestamp.getMinutes();
-          const top = (minute / totalMinutes) * totalHeight;
-          const offset = marker.stackIndex * 14;
-
-          return (
-            <View
-              key={marker.id}
-              style={{
-                position: "absolute",
-                top: top - 5 + offset,
-                left: 0,
-                right: 0,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: spacing.xs,
-              }}
-            >
-              <View style={styles.eventConnector} />
-              <View style={styles.eventDot} />
-              <View style={styles.eventPill}>
-                <Text style={styles.eventPillTime}>{formatClockTime(marker.timestamp)}</Text>
-                <Text style={styles.eventPillText} numberOfLines={1}>{marker.label}</Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
+  return { hours, minutes };
 }
 
 export default function HistoryScreen() {
@@ -410,6 +109,11 @@ export default function HistoryScreen() {
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activityBlockEditChoice, setActivityBlockEditChoice] = useState<ActivityBlockEditChoice | null>(null);
+  const [editableScheduleEntry, setEditableScheduleEntry] = useState<EditableScheduleEntry | null>(null);
+  const [entryLabelInput, setEntryLabelInput] = useState("");
+  const [entryTimeInput, setEntryTimeInput] = useState("");
+  const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
 
   const isSelectedDayToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
   const formattedSelectedDay = useMemo(() => formatSelectedDay(selectedDay), [selectedDay]);
@@ -483,8 +187,152 @@ export default function HistoryScreen() {
     () => deriveSingleDayCalendarItems(activityEntries, eventEntries, selectedDay),
     [activityEntries, eventEntries, selectedDay],
   );
+  const activityEntryById = useMemo(() => new Map(activityEntries.map((entry) => [entry.id, entry])), [activityEntries]);
+  const eventEntryById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
+
+  const openScheduleEntryEditor = useCallback((entry: EditableScheduleEntry) => {
+    const timestamp = entry.entry.timestamp.toDate();
+    setEditableScheduleEntry(entry);
+    setEntryLabelInput(entry.entry.label);
+    setEntryTimeInput(formatEditorTime(timestamp));
+  }, []);
 
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+
+  const refreshSelectedDayEntries = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    const [loadedActivities, loadedEvents] = await Promise.all([
+      listActivityEntriesForDay(user.uid, selectedDay),
+      listEventEntriesForDay(user.uid, selectedDay),
+    ]);
+
+    setActivityEntries(loadedActivities);
+    setEventEntries(loadedEvents);
+  }, [selectedDay, user]);
+
+  const handleScheduleActivityBlockPress = useCallback((block: DayViewActivityBlock) => {
+    const [startEntryId, endEntryId] = block.id.split(":");
+    const startEntry = activityEntryById.get(startEntryId);
+    const endEntry = activityEntryById.get(endEntryId);
+
+    if (startEntry && endEntry) {
+      setActivityBlockEditChoice({
+        label: block.label,
+        startEntry,
+        endEntry,
+      });
+      return;
+    }
+
+    if (startEntry) {
+      openScheduleEntryEditor({ kind: "activity", entry: startEntry });
+      return;
+    }
+
+    if (endEntry) {
+      openScheduleEntryEditor({ kind: "activity", entry: endEntry });
+      return;
+    }
+
+    setErrorMessage("We could not find this activity entry. Please refresh and try again.");
+  }, [activityEntryById, openScheduleEntryEditor]);
+
+  const handleScheduleEventMarkerPress = useCallback((marker: DayViewEventMarker) => {
+    const entry = eventEntryById.get(marker.id);
+
+    if (!entry) {
+      setErrorMessage("We could not find this check-in entry. Please refresh and try again.");
+      return;
+    }
+
+    openScheduleEntryEditor({ kind: "event", entry });
+  }, [eventEntryById, openScheduleEntryEditor]);
+
+  const handleSaveEditedScheduleEntry = useCallback(async () => {
+    if (!user || !editableScheduleEntry) {
+      return;
+    }
+
+    const label = entryLabelInput.trim();
+
+    if (label.length === 0) {
+      setErrorMessage("Please enter a label before saving.");
+      return;
+    }
+
+    const parsedTime = parseEditorTime(entryTimeInput);
+
+    if (!parsedTime) {
+      setErrorMessage("Enter time as HH:MM in 24-hour format.");
+      return;
+    }
+
+    const nextTimestamp = new Date(editableScheduleEntry.entry.timestamp.toDate());
+    nextTimestamp.setHours(parsedTime.hours, parsedTime.minutes, 0, 0);
+
+    setIsSavingEntryEdit(true);
+    setErrorMessage(null);
+
+    try {
+      if (editableScheduleEntry.kind === "activity") {
+        await updateActivityEntry({
+          userId: user.uid,
+          id: editableScheduleEntry.entry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextTimestamp),
+        });
+      } else {
+        await updateEventEntry({
+          userId: user.uid,
+          id: editableScheduleEntry.entry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextTimestamp),
+        });
+      }
+
+      await refreshSelectedDayEntries();
+      setEditableScheduleEntry(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not save this entry. Please try again.");
+    } finally {
+      setIsSavingEntryEdit(false);
+    }
+  }, [editableScheduleEntry, entryLabelInput, entryTimeInput, refreshSelectedDayEntries, user]);
+
+  const handleDeleteEditedScheduleEntry = useCallback(async () => {
+    if (!user || !editableScheduleEntry) {
+      return;
+    }
+
+    setIsSavingEntryEdit(true);
+    setErrorMessage(null);
+
+    try {
+      if (editableScheduleEntry.kind === "activity") {
+        await deleteActivityEntry({ userId: user.uid, id: editableScheduleEntry.entry.id });
+      } else {
+        await deleteEventEntry({ userId: user.uid, id: editableScheduleEntry.entry.id });
+      }
+
+      await refreshSelectedDayEntries();
+      setEditableScheduleEntry(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not delete this entry. Please try again.");
+    } finally {
+      setIsSavingEntryEdit(false);
+    }
+  }, [editableScheduleEntry, refreshSelectedDayEntries, user]);
+
+  const closeScheduleEntryEditor = () => {
+    if (isSavingEntryEdit) {
+      return;
+    }
+
+    setEditableScheduleEntry(null);
+  };
 
   return (
     <View style={styles.screen}>
@@ -527,7 +375,7 @@ export default function HistoryScreen() {
 
         {errorMessage ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>We could not load this day.</Text>
+            <Text style={styles.errorTitle}>There was a problem.</Text>
             <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -541,9 +389,11 @@ export default function HistoryScreen() {
                 <Text style={styles.loadingText}>Loading this day...</Text>
               </View>
             ) : (
-              <DaySchedule
+              <SharedDaySchedule
                 activityBlocks={dayCalendarItems.activityBlocks}
                 eventMarkers={dayCalendarItems.eventMarkers}
+                onPressActivityBlock={handleScheduleActivityBlockPress}
+                onPressEventMarker={handleScheduleEventMarkerPress}
               />
             )}
           </View>
@@ -615,6 +465,118 @@ export default function HistoryScreen() {
             )}
           </View>
         </Card>
+
+        <Modal
+          visible={activityBlockEditChoice !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setActivityBlockEditChoice(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Activity block details</Text>
+              <Text style={styles.modalSubtitle}>Choose the start or end entry to edit for {activityBlockEditChoice?.label}.</Text>
+
+              {activityBlockEditChoice ? (
+                <View style={styles.modalList}>
+                  <Pressable
+                    style={styles.modalListItem}
+                    onPress={() => {
+                      openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.startEntry });
+                      setActivityBlockEditChoice(null);
+                    }}
+                  >
+                    <View style={styles.modalListTextWrap}>
+                      <Text style={styles.modalListLabel}>Start entry</Text>
+                      <Text style={styles.modalListTime}>{formatClockTime(activityBlockEditChoice.startEntry.timestamp.toDate())}</Text>
+                    </View>
+                    <Text style={styles.modalListAction}>Edit</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.modalListItem}
+                    onPress={() => {
+                      openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.endEntry });
+                      setActivityBlockEditChoice(null);
+                    }}
+                  >
+                    <View style={styles.modalListTextWrap}>
+                      <Text style={styles.modalListLabel}>End entry</Text>
+                      <Text style={styles.modalListTime}>{formatClockTime(activityBlockEditChoice.endEntry.timestamp.toDate())}</Text>
+                    </View>
+                    <Text style={styles.modalListAction}>Edit</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <Pressable style={styles.modalCancelButton} onPress={() => setActivityBlockEditChoice(null)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={editableScheduleEntry !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={closeScheduleEntryEditor}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>{editableScheduleEntry?.kind === "activity" ? "Edit activity entry" : "Edit check-in entry"}</Text>
+              <Text style={styles.modalSubtitle}>Adjust the label or timestamp. Changes apply immediately.</Text>
+
+              <View style={styles.entryEditorGroup}>
+                <Text style={styles.entryEditorLabel}>Label</Text>
+                <TextInput
+                  style={styles.entryEditorInput}
+                  value={entryLabelInput}
+                  onChangeText={setEntryLabelInput}
+                  editable={!isSavingEntryEdit}
+                  placeholder={editableScheduleEntry?.kind === "activity" ? "Activity label" : "Check-in label"}
+                  placeholderTextColor={colors.stone400}
+                />
+              </View>
+
+              <View style={styles.entryEditorGroup}>
+                <Text style={styles.entryEditorLabel}>Time (HH:MM)</Text>
+                <TextInput
+                  style={styles.entryEditorInput}
+                  value={entryTimeInput}
+                  onChangeText={setEntryTimeInput}
+                  editable={!isSavingEntryEdit}
+                  keyboardType="numbers-and-punctuation"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="09:30"
+                  placeholderTextColor={colors.stone400}
+                />
+              </View>
+
+              <View style={styles.entryEditorActions}>
+                <Pressable
+                  style={[styles.entryEditorButton, styles.entryEditorDeleteButton, isSavingEntryEdit && styles.dayButtonDisabled]}
+                  onPress={() => void handleDeleteEditedScheduleEntry()}
+                  disabled={isSavingEntryEdit}
+                >
+                  <Text style={styles.entryEditorDeleteText}>Delete</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.entryEditorButton, styles.entryEditorSaveButton, isSavingEntryEdit && styles.dayButtonDisabled]}
+                  onPress={() => void handleSaveEditedScheduleEntry()}
+                  disabled={isSavingEntryEdit}
+                >
+                  <Text style={styles.entryEditorSaveText}>{isSavingEntryEdit ? "Saving..." : "Save"}</Text>
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.modalCancelButton} onPress={closeScheduleEntryEditor} disabled={isSavingEntryEdit}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -663,6 +625,119 @@ const styles = StyleSheet.create({
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
   errorText: { fontSize: fontSize.xs, color: colors.rose700 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlayBackdrop,
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.backgroundCard,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  modalTitle: {
+    fontSize: fontSize.base,
+    fontWeight: "700",
+    color: colors.stone900,
+  },
+  modalSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.stone600,
+  },
+  modalList: {
+    gap: spacing.sm,
+  },
+  modalListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.backgroundSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  modalListTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  modalListLabel: {
+    fontSize: fontSize.sm,
+    color: colors.stone900,
+    fontWeight: "600",
+  },
+  modalListTime: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+  },
+  modalListAction: {
+    fontSize: fontSize.sm,
+    color: colors.orange700,
+    fontWeight: "700",
+  },
+  modalCancelButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  modalCancelText: {
+    fontSize: fontSize.sm,
+    color: colors.stone700,
+    fontWeight: "600",
+  },
+  entryEditorGroup: {
+    gap: spacing.xs,
+  },
+  entryEditorLabel: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
+    fontWeight: "600",
+  },
+  entryEditorInput: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: controlSize.lg,
+    fontSize: fontSize.base,
+    color: colors.stone900,
+    backgroundColor: colors.backgroundLight,
+  },
+  entryEditorActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  entryEditorButton: {
+    flex: 1,
+    minHeight: controlSize.lg,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  entryEditorDeleteButton: {
+    backgroundColor: colors.rose50,
+    borderWidth: 1,
+    borderColor: colors.rose200,
+  },
+  entryEditorSaveButton: {
+    backgroundColor: colors.amber900,
+  },
+  entryEditorDeleteText: {
+    color: colors.rose700,
+    fontSize: fontSize.sm,
+    fontWeight: "700",
+  },
+  entryEditorSaveText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: "700",
+  },
   loadingContainer: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { fontSize: fontSize.sm, color: colors.stone500 },
   timelinePreviewEmpty: { gap: 0 },

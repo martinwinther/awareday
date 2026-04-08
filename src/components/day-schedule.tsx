@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   formatClockTime,
   type DayViewActivityBlock,
@@ -26,6 +26,8 @@ type DayScheduleProps = {
   showCurrentTimeIndicator?: boolean;
   autoScrollToCurrentTimeOnMount?: boolean;
   maxVisibleHeight?: number;
+  onPressActivityBlock?: (block: DayViewActivityBlock) => void;
+  onPressEventMarker?: (marker: DayViewEventMarker) => void;
 };
 
 function seedsOverlap(left: DisplaySeed, right: DisplaySeed): boolean {
@@ -214,6 +216,8 @@ export function DaySchedule({
   showCurrentTimeIndicator = false,
   autoScrollToCurrentTimeOnMount = false,
   maxVisibleHeight,
+  onPressActivityBlock,
+  onPressEventMarker,
 }: DayScheduleProps) {
   const hasEntries = activityBlocks.length > 0 || eventMarkers.length > 0;
   const leftAxisWidth = 64;
@@ -362,9 +366,9 @@ export function DaySchedule({
             : `${block.label.slice(0, 14)}${block.label.length > 14 ? "..." : ""}`;
 
           return (
-            <View
+            <Pressable
               key={block.id}
-              style={{
+              style={({ pressed }) => ({
                 position: "absolute",
                 top,
                 left,
@@ -377,7 +381,13 @@ export function DaySchedule({
                 paddingHorizontal: spacing.xs,
                 paddingVertical: height < 18 ? 1 : 2,
                 justifyContent: "center",
-              }}
+                opacity: pressed && onPressActivityBlock ? 0.7 : 1,
+              })}
+              onPress={onPressActivityBlock ? () => onPressActivityBlock(block) : undefined}
+              disabled={!onPressActivityBlock}
+              accessibilityRole={onPressActivityBlock ? "button" : undefined}
+              accessibilityLabel={onPressActivityBlock ? `Open activity entry actions for ${block.label}` : undefined}
+              accessibilityHint={onPressActivityBlock ? "View and edit the start or end entry for this activity block" : undefined}
             >
               {showStandardLabel ? (
                 <Text style={styles.activityBlockText} numberOfLines={1}>
@@ -390,7 +400,7 @@ export function DaySchedule({
               ) : (
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: hexToRgba(baseColor, 0.95) }} />
               )}
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -411,9 +421,9 @@ export function DaySchedule({
           const offset = marker.stackIndex * 14;
 
           return (
-            <View
+            <Pressable
               key={marker.id}
-              style={{
+              style={({ pressed }) => ({
                 position: "absolute",
                 top: top - 5 + offset,
                 left: 0,
@@ -421,7 +431,13 @@ export function DaySchedule({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: spacing.xs,
-              }}
+                opacity: pressed && onPressEventMarker ? 0.75 : 1,
+              })}
+              onPress={onPressEventMarker ? () => onPressEventMarker(marker) : undefined}
+              disabled={!onPressEventMarker}
+              accessibilityRole={onPressEventMarker ? "button" : undefined}
+              accessibilityLabel={onPressEventMarker ? `Open check-in entry actions for ${marker.label}` : undefined}
+              accessibilityHint={onPressEventMarker ? "View and edit this check-in entry" : undefined}
             >
               <View style={styles.eventConnector} />
               <View style={styles.eventDot} />
@@ -429,7 +445,7 @@ export function DaySchedule({
                 <Text style={styles.eventPillTime}>{formatClockTime(marker.timestamp)}</Text>
                 <Text style={styles.eventPillText} numberOfLines={1}>{marker.label}</Text>
               </View>
-            </View>
+            </Pressable>
           );
         })}
       </View>

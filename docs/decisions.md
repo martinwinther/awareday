@@ -109,3 +109,8 @@
 - Decision: Introduce a shared DaySchedule component and enable current-time awareness (indicator + one-time smart auto-scroll) on Today only.
 - Reason: Today needs in-the-moment schedule context without changing History behavior, and a shared schedule renderer avoids diverging layout logic across tabs.
 - Consequences: Today now shows a restrained Now line and opens near the current time within sensible scroll bounds, while History continues using the same schedule visuals without auto-scrolling or time-indicator overlays.
+
+- Date: 2026-04-08
+- Decision: Make day-schedule blocks and check-in markers tappable and route those taps into the same entry edit/delete modal flow used by schedule entry actions.
+- Reason: Users need a faster way to inspect and correct logs directly from the schedule without hunting through timeline rows.
+- Consequences: Both Today and History schedule views now open entry actions on tap, activity blocks let users choose start or end entries, and edits continue to use existing Firestore update/delete paths.

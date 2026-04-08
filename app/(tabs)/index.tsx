@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Platform, Modal, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
+import { Timestamp } from "firebase/firestore";
 import { Card } from "@/src/components/card";
 import { DaySchedule } from "@/src/components/day-schedule";
 import { SectionLabel } from "@/src/components/section-label";
@@ -16,6 +17,8 @@ import {
   formatClockTime,
   formatDuration,
   type ActivityEntry,
+  type DayViewActivityBlock,
+  type DayViewEventMarker,
   type EventEntry,
   type TodayTimelineItem,
 } from "@/src/lib/domain";
@@ -30,6 +33,8 @@ import {
   listActivityLabels,
   listEventLabels,
   listTodayEventEntries,
+  updateActivityEntry,
+  updateEventEntry,
 } from "@/src/lib/firestore/repositories";
 import {
   colors,
@@ -46,6 +51,39 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const fallbackActivityLabels = ["Work", "Walk dog", "Cooking"];
 const fallbackEventLabels = ["Coffee", "Water", "Medication", "Mood check", "Symptom check"];
 const ACTIVITY_FETCH_WINDOW_DAYS = 14;
+
+type EditableScheduleEntry =
+  | { kind: "activity"; entry: ActivityEntry }
+  | { kind: "event"; entry: EventEntry };
+
+type ActivityBlockEditChoice = {
+  label: string;
+  startEntry: ActivityEntry;
+  endEntry: ActivityEntry;
+};
+
+function formatEditorTime(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function parseEditorTime(value: string): { hours: number; minutes: number } | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+
+  return { hours, minutes };
+}
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
@@ -66,6 +104,11 @@ export default function TodayScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [activityBlockEditChoice, setActivityBlockEditChoice] = useState<ActivityBlockEditChoice | null>(null);
+  const [editableScheduleEntry, setEditableScheduleEntry] = useState<EditableScheduleEntry | null>(null);
+  const [entryLabelInput, setEntryLabelInput] = useState("");
+  const [entryTimeInput, setEntryTimeInput] = useState("");
+  const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
 
   const isCompactWidth = width < 380;
   const isWideLayout = width >= layout.wideWebWidth;
@@ -154,6 +197,15 @@ export default function TodayScreen() {
     () => deriveSingleDayCalendarItems(activityEntries, eventEntries, currentTime),
     [activityEntries, currentTime, eventEntries],
   );
+  const activityEntryById = useMemo(() => new Map(activityEntries.map((entry) => [entry.id, entry])), [activityEntries]);
+  const eventEntryById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
+
+  const openScheduleEntryEditor = useCallback((entry: EditableScheduleEntry) => {
+    const timestamp = entry.entry.timestamp.toDate();
+    setEditableScheduleEntry(entry);
+    setEntryLabelInput(entry.entry.label);
+    setEntryTimeInput(formatEditorTime(timestamp));
+  }, []);
 
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -229,6 +281,134 @@ export default function TodayScreen() {
       setErrorMessage(error instanceof FirebaseError ? error.message : "We could not delete that entry. Please try again.");
     }
   }, [loadActivities, loadEvents, user]);
+
+  const handleScheduleActivityBlockPress = useCallback((block: DayViewActivityBlock) => {
+    const [startEntryId, endEntryId] = block.id.split(":");
+    const startEntry = activityEntryById.get(startEntryId);
+    const endEntry = activityEntryById.get(endEntryId);
+
+    if (startEntry && endEntry) {
+      setActivityBlockEditChoice({
+        label: block.label,
+        startEntry,
+        endEntry,
+      });
+      return;
+    }
+
+    if (startEntry) {
+      openScheduleEntryEditor({ kind: "activity", entry: startEntry });
+      return;
+    }
+
+    if (endEntry) {
+      openScheduleEntryEditor({ kind: "activity", entry: endEntry });
+      return;
+    }
+
+    setErrorMessage("We could not find this activity entry. Please refresh and try again.");
+  }, [activityEntryById, openScheduleEntryEditor]);
+
+  const handleScheduleEventMarkerPress = useCallback((marker: DayViewEventMarker) => {
+    const entry = eventEntryById.get(marker.id);
+
+    if (!entry) {
+      setErrorMessage("We could not find this check-in entry. Please refresh and try again.");
+      return;
+    }
+
+    openScheduleEntryEditor({ kind: "event", entry });
+  }, [eventEntryById, openScheduleEntryEditor]);
+
+  const handleSaveEditedScheduleEntry = useCallback(async () => {
+    if (!user || !editableScheduleEntry) {
+      return;
+    }
+
+    const label = entryLabelInput.trim();
+
+    if (label.length === 0) {
+      setErrorMessage("Please enter a label before saving.");
+      return;
+    }
+
+    const parsedTime = parseEditorTime(entryTimeInput);
+
+    if (!parsedTime) {
+      setErrorMessage("Enter time as HH:MM in 24-hour format.");
+      return;
+    }
+
+    const nextTimestamp = new Date(editableScheduleEntry.entry.timestamp.toDate());
+    nextTimestamp.setHours(parsedTime.hours, parsedTime.minutes, 0, 0);
+
+    setIsSavingEntryEdit(true);
+    setErrorMessage(null);
+
+    try {
+      if (editableScheduleEntry.kind === "activity") {
+        await updateActivityEntry({
+          userId: user.uid,
+          id: editableScheduleEntry.entry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextTimestamp),
+        });
+        await createActivityLabelIfMissing({ userId: user.uid, name: label });
+        await loadActivities(user.uid);
+        void loadActivityLabels(user.uid);
+      } else {
+        await updateEventEntry({
+          userId: user.uid,
+          id: editableScheduleEntry.entry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextTimestamp),
+        });
+        await createEventLabelIfMissing({ userId: user.uid, name: label });
+        await loadEvents(user.uid);
+        void loadEventLabels(user.uid);
+      }
+
+      showSuccess(editableScheduleEntry.kind === "activity" ? "Updated activity entry." : "Updated check-in entry.");
+      setEditableScheduleEntry(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not save this entry. Please try again.");
+    } finally {
+      setIsSavingEntryEdit(false);
+    }
+  }, [
+    editableScheduleEntry,
+    entryLabelInput,
+    entryTimeInput,
+    loadActivities,
+    loadActivityLabels,
+    loadEvents,
+    loadEventLabels,
+    user,
+  ]);
+
+  const handleDeleteEditedScheduleEntry = useCallback(async () => {
+    if (!editableScheduleEntry) {
+      return;
+    }
+
+    const timelineItem: TodayTimelineItem = editableScheduleEntry.kind === "event"
+      ? { kind: "event", entry: editableScheduleEntry.entry }
+      : {
+        kind: editableScheduleEntry.entry.action === "start" ? "activity-start" : "activity-end",
+        entry: editableScheduleEntry.entry,
+      };
+
+    await handleDeleteTimelineItem(timelineItem);
+    setEditableScheduleEntry(null);
+  }, [editableScheduleEntry, handleDeleteTimelineItem]);
+
+  const closeScheduleEntryEditor = () => {
+    if (isSavingEntryEdit) {
+      return;
+    }
+
+    setEditableScheduleEntry(null);
+  };
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
 
@@ -420,6 +600,8 @@ export default function TodayScreen() {
               showCurrentTimeIndicator
               autoScrollToCurrentTimeOnMount
               maxVisibleHeight={isCompactWidth ? 320 : 360}
+              onPressActivityBlock={handleScheduleActivityBlockPress}
+              onPressEventMarker={handleScheduleEventMarkerPress}
             />
           )}
         </View>
@@ -466,6 +648,137 @@ export default function TodayScreen() {
       </Card>
 
       <View style={{ height: spacing["4xl"] }} />
+
+      <Modal
+        visible={activityBlockEditChoice !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActivityBlockEditChoice(null)}
+      >
+        <View style={s.modalBackdrop}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>Activity block details</Text>
+            <Text style={s.modalSubtitle}>Choose the start or end entry to edit for {activityBlockEditChoice?.label}.</Text>
+
+            {activityBlockEditChoice ? (
+              <View style={s.modalList}>
+                <Pressable
+                  style={s.modalListItem}
+                  onPress={() => {
+                    openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.startEntry });
+                    setActivityBlockEditChoice(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit start entry for ${activityBlockEditChoice.label}`}
+                  accessibilityHint="Opens the editor for the activity start entry"
+                >
+                  <View style={s.modalListTextWrap}>
+                    <Text style={s.modalListLabel}>Start entry</Text>
+                    <Text style={s.modalListTime}>{formatClockTime(activityBlockEditChoice.startEntry.timestamp.toDate())}</Text>
+                  </View>
+                  <Text style={s.modalListAction}>Edit</Text>
+                </Pressable>
+
+                <Pressable
+                  style={s.modalListItem}
+                  onPress={() => {
+                    openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.endEntry });
+                    setActivityBlockEditChoice(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit end entry for ${activityBlockEditChoice.label}`}
+                  accessibilityHint="Opens the editor for the activity end entry"
+                >
+                  <View style={s.modalListTextWrap}>
+                    <Text style={s.modalListLabel}>End entry</Text>
+                    <Text style={s.modalListTime}>{formatClockTime(activityBlockEditChoice.endEntry.timestamp.toDate())}</Text>
+                  </View>
+                  <Text style={s.modalListAction}>Edit</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <Pressable
+              style={s.modalCancelButton}
+              onPress={() => setActivityBlockEditChoice(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              accessibilityHint="Close this picker"
+            >
+              <Text style={s.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={editableScheduleEntry !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeScheduleEntryEditor}
+      >
+        <View style={s.modalBackdrop}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>{editableScheduleEntry?.kind === "activity" ? "Edit activity entry" : "Edit check-in entry"}</Text>
+            <Text style={s.modalSubtitle}>Adjust the label or timestamp. Changes apply immediately.</Text>
+
+            <View style={s.entryEditorGroup}>
+              <Text style={s.entryEditorLabel}>Label</Text>
+              <TextInput
+                style={s.entryEditorInput}
+                value={entryLabelInput}
+                onChangeText={setEntryLabelInput}
+                editable={!isSavingEntryEdit}
+                placeholder={editableScheduleEntry?.kind === "activity" ? "Activity label" : "Check-in label"}
+                placeholderTextColor={colors.stone400}
+              />
+            </View>
+
+            <View style={s.entryEditorGroup}>
+              <Text style={s.entryEditorLabel}>Time (HH:MM)</Text>
+              <TextInput
+                style={s.entryEditorInput}
+                value={entryTimeInput}
+                onChangeText={setEntryTimeInput}
+                editable={!isSavingEntryEdit}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="09:30"
+                placeholderTextColor={colors.stone400}
+              />
+            </View>
+
+            <View style={s.entryEditorActions}>
+              <Pressable
+                style={[s.entryEditorButton, s.entryEditorDeleteButton, isSavingEntryEdit && s.disabled]}
+                onPress={() => void handleDeleteEditedScheduleEntry()}
+                disabled={isSavingEntryEdit}
+              >
+                <Text style={s.entryEditorDeleteText}>Delete</Text>
+              </Pressable>
+              <Pressable
+                style={[s.entryEditorButton, s.entryEditorSaveButton, isSavingEntryEdit && s.disabled]}
+                onPress={() => void handleSaveEditedScheduleEntry()}
+                disabled={isSavingEntryEdit}
+              >
+                <Text style={s.entryEditorSaveText}>{isSavingEntryEdit ? "Saving..." : "Save"}</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={s.modalCancelButton}
+              onPress={closeScheduleEntryEditor}
+              disabled={isSavingEntryEdit}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              accessibilityHint="Close this editor without saving"
+            >
+              <Text style={s.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showEndActivityPicker} transparent animationType="fade" onRequestClose={() => setShowEndActivityPicker(false)}>
         <View style={s.modalBackdrop}>
@@ -641,6 +954,53 @@ const s = StyleSheet.create({
   modalSubtitle: {
     fontSize: fontSize.sm,
     color: colors.stone600,
+  },
+  entryEditorGroup: {
+    gap: spacing.xs,
+  },
+  entryEditorLabel: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
+    fontWeight: "600",
+  },
+  entryEditorInput: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: controlSize.lg,
+    fontSize: fontSize.base,
+    color: colors.stone900,
+    backgroundColor: colors.backgroundLight,
+  },
+  entryEditorActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  entryEditorButton: {
+    flex: 1,
+    minHeight: controlSize.lg,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  entryEditorDeleteButton: {
+    backgroundColor: colors.rose50,
+    borderWidth: 1,
+    borderColor: colors.rose200,
+  },
+  entryEditorSaveButton: {
+    backgroundColor: colors.amber900,
+  },
+  entryEditorDeleteText: {
+    color: colors.rose700,
+    fontSize: fontSize.sm,
+    fontWeight: "700",
+  },
+  entryEditorSaveText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: "700",
   },
   modalList: {
     gap: spacing.sm,
