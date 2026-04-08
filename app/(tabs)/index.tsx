@@ -387,20 +387,30 @@ export default function TodayScreen() {
   ]);
 
   const handleDeleteEditedScheduleEntry = useCallback(async () => {
-    if (!editableScheduleEntry) {
+    if (!user || !editableScheduleEntry) {
       return;
     }
 
-    const timelineItem: TodayTimelineItem = editableScheduleEntry.kind === "event"
-      ? { kind: "event", entry: editableScheduleEntry.entry }
-      : {
-        kind: editableScheduleEntry.entry.action === "start" ? "activity-start" : "activity-end",
-        entry: editableScheduleEntry.entry,
-      };
+    setIsSavingEntryEdit(true);
+    setErrorMessage(null);
 
-    await handleDeleteTimelineItem(timelineItem);
-    setEditableScheduleEntry(null);
-  }, [editableScheduleEntry, handleDeleteTimelineItem]);
+    try {
+      if (editableScheduleEntry.kind === "event") {
+        await deleteEventEntry({ userId: user.uid, id: editableScheduleEntry.entry.id });
+        await loadEvents(user.uid);
+      } else {
+        await deleteActivityEntry({ userId: user.uid, id: editableScheduleEntry.entry.id });
+        await loadActivities(user.uid);
+      }
+
+      showSuccess(editableScheduleEntry.kind === "activity" ? "Deleted activity entry." : "Deleted check-in entry.");
+      setEditableScheduleEntry(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not delete this entry. Please try again.");
+    } finally {
+      setIsSavingEntryEdit(false);
+    }
+  }, [editableScheduleEntry, loadActivities, loadEvents, user]);
 
   const closeScheduleEntryEditor = () => {
     if (isSavingEntryEdit) {
@@ -731,6 +741,8 @@ export default function TodayScreen() {
                 editable={!isSavingEntryEdit}
                 placeholder={editableScheduleEntry?.kind === "activity" ? "Activity label" : "Check-in label"}
                 placeholderTextColor={colors.stone400}
+                accessibilityLabel={editableScheduleEntry?.kind === "activity" ? "Activity entry label" : "Check-in entry label"}
+                accessibilityHint="Edit the label for this entry"
               />
             </View>
 
@@ -746,6 +758,8 @@ export default function TodayScreen() {
                 autoCorrect={false}
                 placeholder="09:30"
                 placeholderTextColor={colors.stone400}
+                accessibilityLabel="Entry time"
+                accessibilityHint="Enter the entry time as hours and minutes"
               />
             </View>
 
@@ -754,6 +768,9 @@ export default function TodayScreen() {
                 style={[s.entryEditorButton, s.entryEditorDeleteButton, isSavingEntryEdit && s.disabled]}
                 onPress={() => void handleDeleteEditedScheduleEntry()}
                 disabled={isSavingEntryEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Delete entry"
+                accessibilityHint="Deletes this entry from your timeline"
               >
                 <Text style={s.entryEditorDeleteText}>Delete</Text>
               </Pressable>
@@ -761,6 +778,9 @@ export default function TodayScreen() {
                 style={[s.entryEditorButton, s.entryEditorSaveButton, isSavingEntryEdit && s.disabled]}
                 onPress={() => void handleSaveEditedScheduleEntry()}
                 disabled={isSavingEntryEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Save entry changes"
+                accessibilityHint="Saves your edits to this entry"
               >
                 <Text style={s.entryEditorSaveText}>{isSavingEntryEdit ? "Saving..." : "Save"}</Text>
               </Pressable>

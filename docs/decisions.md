@@ -114,3 +114,8 @@
 - Decision: Make day-schedule blocks and check-in markers tappable and route those taps into the same entry edit/delete modal flow used by schedule entry actions.
 - Reason: Users need a faster way to inspect and correct logs directly from the schedule without hunting through timeline rows.
 - Consequences: Both Today and History schedule views now open entry actions on tap, activity blocks let users choose start or end entries, and edits continue to use existing Firestore update/delete paths.
+
+- Date: 2026-04-08
+- Decision: Normalize schedule-entry editing surfaces by tokenizing the current-time indicator colors and aligning Today/History modal accessibility metadata.
+- Reason: The schedule feature drifted into mixed hard-coded values and uneven interaction semantics between tabs after rapid iteration.
+- Consequences: Shared schedule visuals now consistently pull from theme tokens, History modal/editor controls match Today accessibility patterns, and obsolete History schedule styles were removed to reduce design-system drift.

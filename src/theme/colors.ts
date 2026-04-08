@@ -57,6 +57,9 @@ export const colors = {
   // Surface accents
   eventPillBackground: "rgba(238, 239, 255, 0.95)",
   eventPillBorder: "rgba(90, 90, 200, 0.85)",
+  scheduleNowLine: "rgba(154, 111, 72, 0.78)",
+  scheduleNowPillBackground: "rgba(255, 248, 240, 0.96)",
+  scheduleNowPillBorder: "rgba(154, 111, 72, 0.42)",
   overlayBackdrop: "rgba(15, 23, 42, 0.42)",
 
   // Elevation shadows

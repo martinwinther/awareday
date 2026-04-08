@@ -385,6 +385,7 @@ export function DaySchedule({
               })}
               onPress={onPressActivityBlock ? () => onPressActivityBlock(block) : undefined}
               disabled={!onPressActivityBlock}
+              hitSlop={onPressActivityBlock ? { top: 8, right: 8, bottom: 8, left: 8 } : undefined}
               accessibilityRole={onPressActivityBlock ? "button" : undefined}
               accessibilityLabel={onPressActivityBlock ? `Open activity entry actions for ${block.label}` : undefined}
               accessibilityHint={onPressActivityBlock ? "View and edit the start or end entry for this activity block" : undefined}
@@ -435,6 +436,7 @@ export function DaySchedule({
               })}
               onPress={onPressEventMarker ? () => onPressEventMarker(marker) : undefined}
               disabled={!onPressEventMarker}
+              hitSlop={onPressEventMarker ? { top: 8, right: 8, bottom: 8, left: 8 } : undefined}
               accessibilityRole={onPressEventMarker ? "button" : undefined}
               accessibilityLabel={onPressEventMarker ? `Open check-in entry actions for ${marker.label}` : undefined}
               accessibilityHint={onPressEventMarker ? "View and edit this check-in entry" : undefined}
@@ -562,7 +564,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   activityBlockCompactText: {
-    fontSize: 10,
+    fontSize: fontSize.caption,
     color: colors.stone900,
     fontWeight: "700",
   },
@@ -602,12 +604,12 @@ const styles = StyleSheet.create({
   currentTimeLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(154, 111, 72, 0.78)",
+    backgroundColor: colors.scheduleNowLine,
   },
   currentTimePill: {
-    backgroundColor: "rgba(255, 248, 240, 0.96)",
+    backgroundColor: colors.scheduleNowPillBackground,
     borderWidth: 1,
-    borderColor: "rgba(154, 111, 72, 0.42)",
+    borderColor: colors.scheduleNowPillBorder,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,

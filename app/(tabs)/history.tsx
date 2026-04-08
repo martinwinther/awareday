@@ -485,6 +485,9 @@ export default function HistoryScreen() {
                       openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.startEntry });
                       setActivityBlockEditChoice(null);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit start entry for ${activityBlockEditChoice.label}`}
+                    accessibilityHint="Opens the editor for the activity start entry"
                   >
                     <View style={styles.modalListTextWrap}>
                       <Text style={styles.modalListLabel}>Start entry</Text>
@@ -499,6 +502,9 @@ export default function HistoryScreen() {
                       openScheduleEntryEditor({ kind: "activity", entry: activityBlockEditChoice.endEntry });
                       setActivityBlockEditChoice(null);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit end entry for ${activityBlockEditChoice.label}`}
+                    accessibilityHint="Opens the editor for the activity end entry"
                   >
                     <View style={styles.modalListTextWrap}>
                       <Text style={styles.modalListLabel}>End entry</Text>
@@ -509,7 +515,13 @@ export default function HistoryScreen() {
                 </View>
               ) : null}
 
-              <Pressable style={styles.modalCancelButton} onPress={() => setActivityBlockEditChoice(null)}>
+                <Pressable
+                  style={styles.modalCancelButton}
+                  onPress={() => setActivityBlockEditChoice(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  accessibilityHint="Close this picker"
+                >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
             </View>
@@ -536,6 +548,8 @@ export default function HistoryScreen() {
                   editable={!isSavingEntryEdit}
                   placeholder={editableScheduleEntry?.kind === "activity" ? "Activity label" : "Check-in label"}
                   placeholderTextColor={colors.stone400}
+                  accessibilityLabel={editableScheduleEntry?.kind === "activity" ? "Activity entry label" : "Check-in entry label"}
+                  accessibilityHint="Edit the label for this entry"
                 />
               </View>
 
@@ -551,27 +565,42 @@ export default function HistoryScreen() {
                   autoCorrect={false}
                   placeholder="09:30"
                   placeholderTextColor={colors.stone400}
+                  accessibilityLabel="Entry time"
+                  accessibilityHint="Enter the entry time as hours and minutes"
                 />
               </View>
 
               <View style={styles.entryEditorActions}>
                 <Pressable
-                  style={[styles.entryEditorButton, styles.entryEditorDeleteButton, isSavingEntryEdit && styles.dayButtonDisabled]}
+                  style={[styles.entryEditorButton, styles.entryEditorDeleteButton, isSavingEntryEdit && styles.disabled]}
                   onPress={() => void handleDeleteEditedScheduleEntry()}
                   disabled={isSavingEntryEdit}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete entry"
+                  accessibilityHint="Deletes this entry from your timeline"
                 >
                   <Text style={styles.entryEditorDeleteText}>Delete</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.entryEditorButton, styles.entryEditorSaveButton, isSavingEntryEdit && styles.dayButtonDisabled]}
+                  style={[styles.entryEditorButton, styles.entryEditorSaveButton, isSavingEntryEdit && styles.disabled]}
                   onPress={() => void handleSaveEditedScheduleEntry()}
                   disabled={isSavingEntryEdit}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save entry changes"
+                  accessibilityHint="Saves your edits to this entry"
                 >
                   <Text style={styles.entryEditorSaveText}>{isSavingEntryEdit ? "Saving..." : "Save"}</Text>
                 </Pressable>
               </View>
 
-              <Pressable style={styles.modalCancelButton} onPress={closeScheduleEntryEditor} disabled={isSavingEntryEdit}>
+              <Pressable
+                style={styles.modalCancelButton}
+                onPress={closeScheduleEntryEditor}
+                disabled={isSavingEntryEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+                accessibilityHint="Close this editor without saving"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
             </View>
@@ -621,6 +650,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dayButtonDisabled: { opacity: 0.45 },
+  disabled: { opacity: 0.45 },
   dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.xs, fontWeight: "700", color: colors.stone800 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
@@ -740,79 +770,10 @@ const styles = StyleSheet.create({
   },
   loadingContainer: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { fontSize: fontSize.sm, color: colors.stone500 },
-  timelinePreviewEmpty: { gap: 0 },
-  timelineHourEmpty: { flexDirection: "row", alignItems: "center", height: 44, gap: spacing.sm },
-  timelinePreview: {
-    position: "relative",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderAmber,
-    backgroundColor: colors.backgroundLight,
-    paddingTop: spacing.sm,
-  },
-  timelineHour: { flexDirection: "row", alignItems: "center", height: 48, gap: spacing.sm },
-  timelineHourText: { width: 60, fontSize: fontSize.caption, fontWeight: "500", color: colors.stone500, textAlign: "right" },
-  timelineLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
-  emptyNoticeBox: {
-    marginTop: spacing.md,
-    backgroundColor: colors.backgroundSoft,
-    borderWidth: 1,
-    borderColor: colors.borderAmber,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
-  emptyDescription: { fontSize: fontSize.xs, color: colors.stone500, lineHeight: 18 },
   summaryGroup: { gap: spacing.lg },
   summarySection: { gap: spacing.sm },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
-  activityCanvas: {
-    position: "absolute",
-    top: spacing.sm,
-    bottom: 0,
-  },
-  eventRail: {
-    position: "absolute",
-    top: spacing.sm,
-    bottom: 0,
-  },
-  eventConnector: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.divider,
-  },
-  eventDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.indigo600,
-  },
-  eventPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: colors.eventPillBackground,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.eventPillBorder,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    maxWidth: 90,
-  },
-  eventPillTime: {
-    fontSize: fontSize.caption,
-    color: colors.indigo600,
-    fontWeight: "700",
-  },
-  eventPillText: {
-    flex: 1,
-    fontSize: fontSize.caption,
-    color: colors.indigo600,
-    fontWeight: "600",
-  },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
   totalLabel: { fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
