@@ -41,5 +41,14 @@ export { deriveSingleDayCalendarItems } from "./derive-single-day-calendar-items
 export type { TodayTimelineItem } from "./derive-today-timeline";
 export { deriveTodayTimeline } from "./derive-today-timeline";
 
+// Weekly review summary
+export type { WeeklyDaySummary, WeeklyReviewSummary } from "./derive-weekly-review";
+export {
+  resolveFirstDayOfWeek,
+  getStartOfLocalWeek,
+  getLocalWeekDays,
+  deriveWeeklyReviewSummary,
+} from "./derive-weekly-review";
+
 // Display helpers
 export { formatClockTime, formatDuration } from "./summary-helpers";

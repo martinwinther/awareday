@@ -113,6 +113,26 @@ export async function listActivityEntriesForDay(userId: string, day: Date): Prom
   }));
 }
 
+export async function listActivityEntriesForDateRange(
+  userId: string,
+  startDateInclusive: Date,
+  endDateExclusive: Date,
+): Promise<ActivityEntry[]> {
+  const collectionRef = activityEntriesCollectionRef(userId);
+  const entriesQuery = query(
+    collectionRef,
+    where("timestamp", ">=", Timestamp.fromDate(startDateInclusive)),
+    where("timestamp", "<", Timestamp.fromDate(endDateExclusive)),
+    orderBy("timestamp", "desc"),
+  );
+  const snapshot = await getDocs(entriesQuery);
+
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  }));
+}
+
 export async function updateActivityEntry(input: UpdateActivityEntryInput): Promise<void> {
   const documentRef = doc(activityEntriesCollectionRef(input.userId), input.id);
   const updates: Partial<Omit<ActivityEntryDocument, "userId" | "createdAt">> = {

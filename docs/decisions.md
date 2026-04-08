@@ -99,3 +99,8 @@
 - Decision: Reframe the user-facing event experience as counters/check-ins while preserving existing event data schema and repository APIs.
 - Reason: Most recurring quick logs are countable check-ins (coffee, water, medication, mood check, symptom check), and this framing is clearer than generic one-off events for in-the-moment mobile use.
 - Consequences: UI copy and defaults now guide users toward meaningful recurring check-ins, existing Firestore collections (`eventLabels`, `eventEntries`) and behavior remain unchanged, and no migration is required for existing logged data.
+
+- Date: 2026-04-08
+- Decision: Add a dedicated weekly review tab that derives a locale-aware seven-day summary from existing activity/event entry logs without adding chart-heavy analytics.
+- Reason: Users now need a clear weekly payoff beyond single-day logging, and this can be delivered by reusing existing daily derivation logic with lightweight weekly aggregation.
+- Consequences: The app includes a Review tab with weekly totals and per-day activity/check-in breakdowns, repository range reads were added for one-query weekly loading, and Today/History flows remain unchanged.

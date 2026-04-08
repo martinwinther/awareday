@@ -84,6 +84,27 @@ export async function listEventEntriesForDay(userId: string, day: Date): Promise
   }));
 }
 
+export async function listEventEntriesForDateRange(
+  userId: string,
+  startDateInclusive: Date,
+  endDateExclusive: Date,
+): Promise<EventEntry[]> {
+  const collectionRef = eventEntriesCollectionRef(userId);
+  const entriesQuery = query(
+    collectionRef,
+    where("timestamp", ">=", Timestamp.fromDate(startDateInclusive)),
+    where("timestamp", "<", Timestamp.fromDate(endDateExclusive)),
+    orderBy("timestamp", "desc"),
+  );
+
+  const snapshot = await getDocs(entriesQuery);
+
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  }));
+}
+
 export async function listTodayEventEntries(userId: string, now: Date = new Date()): Promise<EventEntry[]> {
   return listEventEntriesForDay(userId, now);
 }
