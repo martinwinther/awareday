@@ -3,11 +3,13 @@ import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndic
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
+import { DaySchedule } from "@/src/components/day-schedule";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
   deriveDailyActivityTotals,
   deriveDailyEventCounts,
+  deriveSingleDayCalendarItems,
   deriveOpenActivities,
   deriveTodayTimeline,
   normalizeLabelName,
@@ -63,6 +65,7 @@ export default function TodayScreen() {
   const [showEndActivityPicker, setShowEndActivityPicker] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   const isCompactWidth = width < 380;
   const isWideLayout = width >= layout.wideWebWidth;
@@ -122,6 +125,14 @@ export default function TodayScreen() {
     void loadEventLabels(user.uid);
   }, [loadActivities, loadEvents, loadActivityLabels, loadEventLabels, user]);
 
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60 * 1000);
+
+    return () => clearInterval(timerId);
+  }, []);
+
   const displayedActivityLabels = useMemo(() => {
     if (activityQuickLabels === null) return [];
     return activityQuickLabels.length === 0 ? [...fallbackActivityLabels] : activityQuickLabels;
@@ -133,13 +144,16 @@ export default function TodayScreen() {
   }, [eventQuickLabels]);
 
   const openActivitiesToday = useMemo(() => {
-    const today = new Date();
-    return deriveOpenActivities(activityEntries).filter((e) => isOnLocalDay(e.timestamp.toDate(), today));
-  }, [activityEntries]);
+    return deriveOpenActivities(activityEntries).filter((e) => isOnLocalDay(e.timestamp.toDate(), currentTime));
+  }, [activityEntries, currentTime]);
 
-  const todayTimeline = useMemo(() => deriveTodayTimeline(activityEntries, eventEntries, new Date()), [activityEntries, eventEntries]);
-  const todayTotals = useMemo(() => deriveDailyActivityTotals(activityEntries, new Date()), [activityEntries]);
-  const todayEventCounts = useMemo(() => deriveDailyEventCounts(eventEntries, new Date()), [eventEntries]);
+  const todayTimeline = useMemo(() => deriveTodayTimeline(activityEntries, eventEntries, currentTime), [activityEntries, currentTime, eventEntries]);
+  const todayTotals = useMemo(() => deriveDailyActivityTotals(activityEntries, currentTime), [activityEntries, currentTime]);
+  const todayEventCounts = useMemo(() => deriveDailyEventCounts(eventEntries, currentTime), [currentTime, eventEntries]);
+  const todayCalendarItems = useMemo(
+    () => deriveSingleDayCalendarItems(activityEntries, eventEntries, currentTime),
+    [activityEntries, currentTime, eventEntries],
+  );
 
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -392,6 +406,24 @@ export default function TodayScreen() {
           </View>
         </Card>
       </View>
+
+      <Card>
+        <View style={s.cardSection}>
+          <SectionLabel>Day schedule</SectionLabel>
+          {(isLoadingActivities || isLoadingEvents) ? (
+            <ActivityIndicator color={colors.amber600} />
+          ) : (
+            <DaySchedule
+              activityBlocks={todayCalendarItems.activityBlocks}
+              eventMarkers={todayCalendarItems.eventMarkers}
+              currentTime={currentTime}
+              showCurrentTimeIndicator
+              autoScrollToCurrentTimeOnMount
+              maxVisibleHeight={isCompactWidth ? 320 : 360}
+            />
+          )}
+        </View>
+      </Card>
 
       {/* Timeline */}
       <Card>

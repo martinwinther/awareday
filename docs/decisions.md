@@ -104,3 +104,8 @@
 - Decision: Add a dedicated weekly review tab that derives a locale-aware seven-day summary from existing activity/event entry logs without adding chart-heavy analytics.
 - Reason: Users now need a clear weekly payoff beyond single-day logging, and this can be delivered by reusing existing daily derivation logic with lightweight weekly aggregation.
 - Consequences: The app includes a Review tab with weekly totals and per-day activity/check-in breakdowns, repository range reads were added for one-query weekly loading, and Today/History flows remain unchanged.
+
+- Date: 2026-04-08
+- Decision: Introduce a shared DaySchedule component and enable current-time awareness (indicator + one-time smart auto-scroll) on Today only.
+- Reason: Today needs in-the-moment schedule context without changing History behavior, and a shared schedule renderer avoids diverging layout logic across tabs.
+- Consequences: Today now shows a restrained Now line and opens near the current time within sensible scroll bounds, while History continues using the same schedule visuals without auto-scrolling or time-indicator overlays.
