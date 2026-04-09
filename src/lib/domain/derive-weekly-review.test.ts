@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveWeeklyInsightRows,
+  deriveWeeklyInsightsSummary,
   deriveWeeklyReviewSummary,
   getStartOfLocalWeek,
 } from "./derive-weekly-review";
@@ -79,5 +81,145 @@ describe("deriveWeeklyReviewSummary", () => {
       totalActivityDurationMs: 0,
       totalEventCount: 0,
     });
+  });
+});
+
+describe("deriveWeeklyInsightsSummary", () => {
+  it("returns weekly standout insights from the summary", () => {
+    const activityEntries = [
+      buildActivityEntry({ id: "focus-start-mon", label: "Focus", action: "start", timestamp: at("2026-04-06T09:00:00") }),
+      buildActivityEntry({ id: "focus-end-mon", label: "Focus", action: "end", timestamp: at("2026-04-06T10:00:00") }),
+      buildActivityEntry({ id: "focus-start-wed", label: "Focus", action: "start", timestamp: at("2026-04-08T09:00:00") }),
+      buildActivityEntry({ id: "focus-end-wed", label: "Focus", action: "end", timestamp: at("2026-04-08T11:00:00") }),
+      buildActivityEntry({ id: "walk-start-fri", label: "Walk", action: "start", timestamp: at("2026-04-10T18:00:00") }),
+      buildActivityEntry({ id: "walk-end-fri", label: "Walk", action: "end", timestamp: at("2026-04-10T19:00:00") }),
+    ];
+
+    const eventEntries = [
+      buildEventEntry({ id: "coffee-mon", label: "Coffee", timestamp: at("2026-04-06T08:30:00") }),
+      buildEventEntry({ id: "coffee-wed-1", label: "Coffee", timestamp: at("2026-04-08T11:00:00") }),
+      buildEventEntry({ id: "coffee-wed-2", label: "Coffee", timestamp: at("2026-04-08T13:00:00") }),
+      buildEventEntry({ id: "water-thu", label: "Water", timestamp: at("2026-04-09T15:00:00") }),
+    ];
+
+    const weeklySummary = deriveWeeklyReviewSummary(
+      activityEntries,
+      eventEntries,
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    const insights = deriveWeeklyInsightsSummary(weeklySummary);
+
+    expect(insights.topActivity).toEqual({
+      normalizedLabel: "focus",
+      label: "Focus",
+      totalDurationMs: 3 * 60 * 60 * 1000,
+    });
+
+    expect(insights.topCheckIn).toEqual({
+      normalizedLabel: "coffee",
+      label: "Coffee",
+      count: 3,
+    });
+
+    expect(insights.busiestTrackedDay?.day).toEqual(new Date("2026-04-08T00:00:00"));
+    expect(insights.busiestTrackedDay?.totalActivityDurationMs).toBe(2 * 60 * 60 * 1000);
+    expect(insights.mostCheckInsDay?.day).toEqual(new Date("2026-04-08T00:00:00"));
+    expect(insights.mostCheckInsDay?.totalEventCount).toBe(2);
+  });
+
+  it("returns null insights when there is no tracked data", () => {
+    const weeklySummary = deriveWeeklyReviewSummary(
+      [],
+      [],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    const insights = deriveWeeklyInsightsSummary(weeklySummary);
+
+    expect(insights.topActivity).toBeNull();
+    expect(insights.topCheckIn).toBeNull();
+    expect(insights.busiestTrackedDay).toBeNull();
+    expect(insights.mostCheckInsDay).toBeNull();
+  });
+});
+
+describe("deriveWeeklyInsightRows", () => {
+  it("builds stable insight rows for a populated week", () => {
+    const activityEntries = [
+      buildActivityEntry({ id: "focus-start-mon", label: "Focus", action: "start", timestamp: at("2026-04-06T09:00:00") }),
+      buildActivityEntry({ id: "focus-end-mon", label: "Focus", action: "end", timestamp: at("2026-04-06T10:00:00") }),
+      buildActivityEntry({ id: "focus-start-wed", label: "Focus", action: "start", timestamp: at("2026-04-08T09:00:00") }),
+      buildActivityEntry({ id: "focus-end-wed", label: "Focus", action: "end", timestamp: at("2026-04-08T11:00:00") }),
+    ];
+
+    const eventEntries = [
+      buildEventEntry({ id: "coffee-wed-1", label: "Coffee", timestamp: at("2026-04-08T11:00:00") }),
+      buildEventEntry({ id: "coffee-wed-2", label: "Coffee", timestamp: at("2026-04-08T13:00:00") }),
+    ];
+
+    const summary = deriveWeeklyReviewSummary(
+      activityEntries,
+      eventEntries,
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyInsightRows(summary, "en-US")).toEqual([
+      {
+        id: "top-activity",
+        label: "Most time spent activity",
+        value: "Focus 3h 0m",
+      },
+      {
+        id: "top-check-in",
+        label: "Most frequent counter/check-in",
+        value: "Coffee 2 check-ins",
+      },
+      {
+        id: "busiest-day",
+        label: "Busiest day by tracked time",
+        value: "Wed, Apr 8 2h 0m",
+      },
+      {
+        id: "most-check-ins-day",
+        label: "Day with most counters/check-ins",
+        value: "Wed, Apr 8 2 check-ins",
+      },
+    ]);
+  });
+
+  it("returns fallback row copy for an empty week", () => {
+    const summary = deriveWeeklyReviewSummary(
+      [],
+      [],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyInsightRows(summary, "en-US")).toEqual([
+      {
+        id: "top-activity",
+        label: "Most time spent activity",
+        value: "No completed activities this week",
+      },
+      {
+        id: "top-check-in",
+        label: "Most frequent counter/check-in",
+        value: "No check-ins logged this week",
+      },
+      {
+        id: "busiest-day",
+        label: "Busiest day by tracked time",
+        value: "No tracked activity durations this week",
+      },
+      {
+        id: "most-check-ins-day",
+        label: "Day with most counters/check-ins",
+        value: "No check-ins logged this week",
+      },
+    ]);
   });
 });

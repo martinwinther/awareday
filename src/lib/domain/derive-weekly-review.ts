@@ -1,5 +1,6 @@
 import { deriveDailyActivityTotals, type DailyActivityTotal } from "./derive-activity-totals";
 import { deriveDailyEventCounts, type DailyEventCount } from "./derive-daily-event-counts";
+import { formatDuration } from "./summary-helpers";
 
 export type WeeklyDaySummary = {
   day: Date;
@@ -15,6 +16,19 @@ export type WeeklyReviewSummary = {
   days: WeeklyDaySummary[];
   activityTotals: DailyActivityTotal[];
   eventCounts: DailyEventCount[];
+};
+
+export type WeeklyInsightsSummary = {
+  topActivity: DailyActivityTotal | null;
+  topCheckIn: DailyEventCount | null;
+  busiestTrackedDay: WeeklyDaySummary | null;
+  mostCheckInsDay: WeeklyDaySummary | null;
+};
+
+export type WeeklyInsightRow = {
+  id: "top-activity" | "top-check-in" | "busiest-day" | "most-check-ins-day";
+  label: string;
+  value: string;
 };
 
 function normalizeFirstDayOfWeek(firstDay: number): number {
@@ -146,4 +160,86 @@ export function deriveWeeklyReviewSummary(
     activityTotals,
     eventCounts,
   };
+}
+
+export function deriveWeeklyInsightsSummary(summary: WeeklyReviewSummary): WeeklyInsightsSummary {
+  const topActivity = summary.activityTotals[0] ?? null;
+  const topCheckIn = summary.eventCounts[0] ?? null;
+
+  let busiestTrackedDay: WeeklyDaySummary | null = null;
+  let mostCheckInsDay: WeeklyDaySummary | null = null;
+
+  for (const day of summary.days) {
+    if (
+      day.totalActivityDurationMs > 0 &&
+      (!busiestTrackedDay || day.totalActivityDurationMs > busiestTrackedDay.totalActivityDurationMs)
+    ) {
+      busiestTrackedDay = day;
+    }
+
+    if (
+      day.totalEventCount > 0 &&
+      (!mostCheckInsDay || day.totalEventCount > mostCheckInsDay.totalEventCount)
+    ) {
+      mostCheckInsDay = day;
+    }
+  }
+
+  return {
+    topActivity,
+    topCheckIn,
+    busiestTrackedDay,
+    mostCheckInsDay,
+  };
+}
+
+function formatWeeklyInsightDayLabel(day: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(day);
+}
+
+export function deriveWeeklyInsightRows(summary: WeeklyReviewSummary, locale: string): WeeklyInsightRow[] {
+  const weeklyInsights = deriveWeeklyInsightsSummary(summary);
+
+  const topActivityValue = weeklyInsights.topActivity
+    ? `${weeklyInsights.topActivity.label} ${formatDuration(weeklyInsights.topActivity.totalDurationMs)}`
+    : "No completed activities this week";
+
+  const topCheckInValue = weeklyInsights.topCheckIn
+    ? `${weeklyInsights.topCheckIn.label} ${weeklyInsights.topCheckIn.count} ${weeklyInsights.topCheckIn.count === 1 ? "check-in" : "check-ins"}`
+    : "No check-ins logged this week";
+
+  const busiestDayValue = weeklyInsights.busiestTrackedDay
+    ? `${formatWeeklyInsightDayLabel(weeklyInsights.busiestTrackedDay.day, locale)} ${formatDuration(weeklyInsights.busiestTrackedDay.totalActivityDurationMs)}`
+    : "No tracked activity durations this week";
+
+  const mostCheckInsDayValue = weeklyInsights.mostCheckInsDay
+    ? `${formatWeeklyInsightDayLabel(weeklyInsights.mostCheckInsDay.day, locale)} ${weeklyInsights.mostCheckInsDay.totalEventCount} ${weeklyInsights.mostCheckInsDay.totalEventCount === 1 ? "check-in" : "check-ins"}`
+    : "No check-ins logged this week";
+
+  return [
+    {
+      id: "top-activity",
+      label: "Most time spent activity",
+      value: topActivityValue,
+    },
+    {
+      id: "top-check-in",
+      label: "Most frequent counter/check-in",
+      value: topCheckInValue,
+    },
+    {
+      id: "busiest-day",
+      label: "Busiest day by tracked time",
+      value: busiestDayValue,
+    },
+    {
+      id: "most-check-ins-day",
+      label: "Day with most counters/check-ins",
+      value: mostCheckInsDayValue,
+    },
+  ];
 }

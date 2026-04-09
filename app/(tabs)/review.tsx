@@ -6,6 +6,7 @@ import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
+  deriveWeeklyInsightRows,
   deriveWeeklyReviewSummary,
   formatDuration,
   getStartOfLocalWeek,
@@ -194,6 +195,11 @@ export default function WeeklyReviewScreen() {
     [weeklySummary.days],
   );
 
+  const insightRows = useMemo(
+    () => deriveWeeklyInsightRows(weeklySummary, locale),
+    [locale, weeklySummary],
+  );
+
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
   return (
@@ -276,6 +282,24 @@ export default function WeeklyReviewScreen() {
                 ))
               )}
             </View>
+          </View>
+        </Card>
+
+        <Card>
+          <View style={styles.section}>
+            <SectionLabel>Insights</SectionLabel>
+            {isLoading ? (
+              <ActivityIndicator color={colors.amber600} />
+            ) : (
+              <View style={styles.insightList}>
+                {insightRows.map((insight) => (
+                  <View key={insight.id} style={styles.insightRow}>
+                    <Text style={styles.insightLabel}>{insight.label}</Text>
+                    <Text style={styles.insightValue}>{insight.value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </Card>
 
@@ -408,6 +432,27 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: "700",
     color: colors.amber900,
+  },
+  insightList: {
+    gap: spacing.sm,
+  },
+  insightRow: {
+    backgroundColor: colors.backgroundSoft,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  insightLabel: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+  },
+  insightValue: {
+    fontSize: fontSize.sm,
+    color: colors.stone800,
+    fontWeight: "600",
   },
   totalRow: {
     flexDirection: "row",

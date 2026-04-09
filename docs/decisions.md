@@ -119,3 +119,8 @@
 - Decision: Normalize schedule-entry editing surfaces by tokenizing the current-time indicator colors and aligning Today/History modal accessibility metadata.
 - Reason: The schedule feature drifted into mixed hard-coded values and uneven interaction semantics between tabs after rapid iteration.
 - Consequences: Shared schedule visuals now consistently pull from theme tokens, History modal/editor controls match Today accessibility patterns, and obsolete History schedule styles were removed to reduce design-system drift.
+
+- Date: 2026-04-09
+- Decision: Derive weekly insights from the existing weekly review summary (top activity, top check-in, busiest tracked day, and day with most check-ins) instead of adding separate analytics data or chart layers.
+- Reason: The review screen already computes deterministic seven-day totals, so deriving insights from that output keeps logic small, readable, and consistent while preserving current behavior.
+- Consequences: The review tab now surfaces simple weekly takeaways in a mobile-friendly section with no new dependencies, no Firestore schema changes, and no changes to existing weekly totals and per-day breakdown behavior.

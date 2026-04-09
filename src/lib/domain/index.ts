@@ -42,12 +42,19 @@ export type { TodayTimelineItem } from "./derive-today-timeline";
 export { deriveTodayTimeline } from "./derive-today-timeline";
 
 // Weekly review summary
-export type { WeeklyDaySummary, WeeklyReviewSummary } from "./derive-weekly-review";
+export type {
+  WeeklyDaySummary,
+  WeeklyReviewSummary,
+  WeeklyInsightsSummary,
+  WeeklyInsightRow,
+} from "./derive-weekly-review";
 export {
   resolveFirstDayOfWeek,
   getStartOfLocalWeek,
   getLocalWeekDays,
   deriveWeeklyReviewSummary,
+  deriveWeeklyInsightsSummary,
+  deriveWeeklyInsightRows,
 } from "./derive-weekly-review";
 
 // Display helpers
