@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, Modal, TextInput, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useLocalSearchParams } from "expo-router";
 import { FirebaseError } from "firebase/app";
 import { Timestamp } from "firebase/firestore";
 import { Card } from "@/src/components/card";
@@ -67,6 +68,41 @@ function formatSelectedDay(day: Date): string {
   }).format(day);
 }
 
+function parseDayParam(dayParam: string | string[] | undefined): Date | null {
+  const rawDay = Array.isArray(dayParam) ? dayParam[0] : dayParam;
+
+  if (!rawDay) {
+    return null;
+  }
+
+  const match = rawDay.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const date = Number.parseInt(match[3], 10);
+
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(date)) {
+    return null;
+  }
+
+  const parsed = new Date(year, month - 1, date);
+
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== date
+  ) {
+    return null;
+  }
+
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
 type EditableScheduleEntry =
   | { kind: "activity"; entry: ActivityEntry }
   | { kind: "event"; entry: EventEntry };
@@ -103,6 +139,7 @@ function parseEditorTime(value: string): { hours: number; minutes: number } | nu
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { day: dayParam } = useLocalSearchParams<{ day?: string | string[] }>();
   const { user } = useAuthUser();
   const [selectedDay, setSelectedDay] = useState(() => getStartOfDay(new Date()));
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -114,6 +151,20 @@ export default function HistoryScreen() {
   const [entryLabelInput, setEntryLabelInput] = useState("");
   const [entryTimeInput, setEntryTimeInput] = useState("");
   const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
+
+  const selectedDayFromParam = useMemo(() => parseDayParam(dayParam), [dayParam]);
+
+  useEffect(() => {
+    if (!selectedDayFromParam) {
+      return;
+    }
+
+    setSelectedDay((currentDay) => (
+      isSameLocalDay(currentDay, selectedDayFromParam)
+        ? currentDay
+        : selectedDayFromParam
+    ));
+  }, [selectedDayFromParam]);
 
   const isSelectedDayToday = useMemo(() => isSameLocalDay(selectedDay, new Date()), [selectedDay]);
   const formattedSelectedDay = useMemo(() => formatSelectedDay(selectedDay), [selectedDay]);

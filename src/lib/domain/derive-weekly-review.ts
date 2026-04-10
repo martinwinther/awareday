@@ -31,6 +31,30 @@ export type WeeklyInsightRow = {
   value: string;
 };
 
+type RecurringCheckInId = "coffee" | "water" | "medication" | "mood-check" | "symptom-check";
+
+type RecurringCheckInTarget = {
+  id: RecurringCheckInId;
+  normalizedLabel: string;
+  aliases: string[];
+};
+
+export type WeeklyCheckInConsistencyRow = {
+  id: RecurringCheckInId;
+  normalizedLabel: string;
+  label: string;
+  daysWithCheckIn: number;
+  currentStreakDays: number;
+};
+
+const recurringCheckInTargets: RecurringCheckInTarget[] = [
+  { id: "water", normalizedLabel: "water", aliases: ["water"] },
+  { id: "medication", normalizedLabel: "medication", aliases: ["medication"] },
+  { id: "mood-check", normalizedLabel: "mood check", aliases: ["mood check", "mood check-in", "mood check in"] },
+  { id: "symptom-check", normalizedLabel: "symptom check", aliases: ["symptom check", "symptom check-in", "symptom check in"] },
+  { id: "coffee", normalizedLabel: "coffee", aliases: ["coffee"] },
+];
+
 function normalizeFirstDayOfWeek(firstDay: number): number {
   if (firstDay === 7) {
     return 0;
@@ -199,6 +223,93 @@ function formatWeeklyInsightDayLabel(day: Date, locale: string): string {
     month: "short",
     day: "numeric",
   }).format(day);
+}
+
+function getStartOfDay(day: Date): Date {
+  const next = new Date(day);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function clampToWeekDay(summary: WeeklyReviewSummary, referenceDay: Date): Date {
+  const day = getStartOfDay(referenceDay);
+
+  if (day < summary.weekStart) {
+    return summary.weekStart;
+  }
+
+  if (day > summary.weekEnd) {
+    return summary.weekEnd;
+  }
+
+  return day;
+}
+
+function getAnchorDayIndex(summary: WeeklyReviewSummary, anchorDay: Date): number {
+  for (let index = summary.days.length - 1; index >= 0; index -= 1) {
+    if (summary.days[index].day.getTime() <= anchorDay.getTime()) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+export function deriveWeeklyCheckInConsistencyRows(
+  summary: WeeklyReviewSummary,
+  referenceDay: Date = new Date(),
+): WeeklyCheckInConsistencyRow[] {
+  if (summary.days.length === 0) {
+    return [];
+  }
+
+  const anchorDay = clampToWeekDay(summary, referenceDay);
+  const anchorDayIndex = getAnchorDayIndex(summary, anchorDay);
+
+  if (anchorDayIndex < 0) {
+    return [];
+  }
+
+  return recurringCheckInTargets.flatMap((target) => {
+    const aliases = new Set(target.aliases);
+    const matchingWeeklyCounts = summary.eventCounts.filter((count) => aliases.has(count.normalizedLabel));
+
+    if (matchingWeeklyCounts.length === 0) {
+      return [];
+    }
+
+    const representative = [...matchingWeeklyCounts].sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+
+      return left.label.localeCompare(right.label);
+    })[0];
+
+    const hasCheckInByDay = summary.days.map((day) => (
+      day.eventCounts.some((count) => aliases.has(count.normalizedLabel) && count.count > 0)
+    ));
+
+    const daysWithCheckIn = hasCheckInByDay.reduce((count, hasCheckIn) => (hasCheckIn ? count + 1 : count), 0);
+
+    let currentStreakDays = 0;
+
+    for (let index = anchorDayIndex; index >= 0; index -= 1) {
+      if (!hasCheckInByDay[index]) {
+        break;
+      }
+
+      currentStreakDays += 1;
+    }
+
+    return [{
+      id: target.id,
+      normalizedLabel: target.normalizedLabel,
+      label: representative.label,
+      daysWithCheckIn,
+      currentStreakDays,
+    }];
+  });
 }
 
 export function deriveWeeklyInsightRows(summary: WeeklyReviewSummary, locale: string): WeeklyInsightRow[] {

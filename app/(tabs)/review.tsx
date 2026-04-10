@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useRouter } from "expo-router";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
+  deriveWeeklyCheckInConsistencyRows,
   deriveWeeklyInsightRows,
   deriveWeeklyReviewSummary,
   formatDuration,
@@ -13,6 +15,7 @@ import {
   resolveFirstDayOfWeek,
   type ActivityEntry,
   type EventEntry,
+  type WeeklyCheckInConsistencyRow,
   type WeeklyDaySummary,
 } from "@/src/lib/domain";
 import {
@@ -72,6 +75,13 @@ function formatDayLabel(day: Date, locale: string): string {
   }).format(day);
 }
 
+function formatDayParam(day: Date): string {
+  const year = day.getFullYear();
+  const month = String(day.getMonth() + 1).padStart(2, "0");
+  const date = String(day.getDate()).padStart(2, "0");
+  return `${year}-${month}-${date}`;
+}
+
 function describeTopActivity(day: WeeklyDaySummary): string {
   const top = day.activityTotals[0];
 
@@ -93,9 +103,20 @@ function describeTopCheckIn(day: WeeklyDaySummary): string {
   return `${top.label} ${top.count} ${noun}`;
 }
 
+function describeConsistencyDays(row: WeeklyCheckInConsistencyRow): string {
+  const dayNoun = row.daysWithCheckIn === 1 ? "day" : "days";
+  return `${row.daysWithCheckIn} ${dayNoun} this week with at least one log`;
+}
+
+function describeCurrentStreak(row: WeeklyCheckInConsistencyRow): string {
+  const dayNoun = row.currentStreakDays === 1 ? "day" : "days";
+  return `Current streak: ${row.currentStreakDays} ${dayNoun}`;
+}
+
 export default function WeeklyReviewScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const router = useRouter();
   const { user } = useAuthUser();
   const [anchorDay, setAnchorDay] = useState(() => {
     const today = new Date();
@@ -200,7 +221,19 @@ export default function WeeklyReviewScreen() {
     [locale, weeklySummary],
   );
 
+  const consistencyRows = useMemo(
+    () => deriveWeeklyCheckInConsistencyRows(weeklySummary, new Date()),
+    [weeklySummary],
+  );
+
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+
+  const openHistoryForDay = (day: Date) => {
+    router.push({
+      pathname: "/(tabs)/history",
+      params: { day: formatDayParam(day) },
+    });
+  };
 
   return (
     <View style={styles.screen}>
@@ -305,18 +338,49 @@ export default function WeeklyReviewScreen() {
 
         <Card>
           <View style={styles.section}>
+            <SectionLabel>Recurring counter consistency</SectionLabel>
+            {isLoading ? (
+              <ActivityIndicator color={colors.amber600} />
+            ) : consistencyRows.length === 0 ? (
+              <Text style={styles.emptyText}>No coffee, water, medication, mood check, or symptom check logs this week.</Text>
+            ) : (
+              <View style={styles.insightList}>
+                {consistencyRows.map((row) => (
+                  <View key={row.id} style={styles.insightRow}>
+                    <Text style={styles.consistencyLabel}>{row.label}</Text>
+                    <Text style={styles.consistencyMeta}>{describeConsistencyDays(row)}</Text>
+                    <Text style={styles.consistencyMeta}>{describeCurrentStreak(row)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </Card>
+
+        <Card>
+          <View style={styles.section}>
             <SectionLabel>Activities by day</SectionLabel>
             {isLoading ? (
               <ActivityIndicator color={colors.amber600} />
             ) : (
               weeklySummary.days.map((day) => (
-                <View key={`activity-${day.day.toISOString()}`} style={styles.dayRow}>
+                <Pressable
+                  key={`activity-${day.day.toISOString()}`}
+                  style={({ pressed }) => [styles.dayRow, pressed && styles.dayRowPressed]}
+                  onPress={() => openHistoryForDay(day.day)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open History for ${formatDayLabel(day.day, locale)}`}
+                  accessibilityHint="Navigates to History with this day selected"
+                >
                   <View style={styles.dayRowLeft}>
                     <Text style={styles.dayRowLabel}>{formatDayLabel(day.day, locale)}</Text>
                     <Text style={styles.dayRowHint}>{describeTopActivity(day)}</Text>
                   </View>
-                  <Text style={styles.dayRowValue}>{formatDuration(day.totalActivityDurationMs)}</Text>
-                </View>
+                  <View style={styles.dayRowRight}>
+                    <Text style={styles.dayRowValue}>{formatDuration(day.totalActivityDurationMs)}</Text>
+                    <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
+                  </View>
+                </Pressable>
               ))
             )}
           </View>
@@ -332,13 +396,23 @@ export default function WeeklyReviewScreen() {
                 const noun = day.totalEventCount === 1 ? "check-in" : "check-ins";
 
                 return (
-                  <View key={`event-${day.day.toISOString()}`} style={styles.dayRow}>
+                  <Pressable
+                    key={`event-${day.day.toISOString()}`}
+                    style={({ pressed }) => [styles.dayRow, pressed && styles.dayRowPressed]}
+                    onPress={() => openHistoryForDay(day.day)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open History for ${formatDayLabel(day.day, locale)}`}
+                    accessibilityHint="Navigates to History with this day selected"
+                  >
                     <View style={styles.dayRowLeft}>
                       <Text style={styles.dayRowLabel}>{formatDayLabel(day.day, locale)}</Text>
                       <Text style={styles.dayRowHint}>{describeTopCheckIn(day)}</Text>
                     </View>
-                    <Text style={styles.dayRowValue}>{`${day.totalEventCount} ${noun}`}</Text>
-                  </View>
+                    <View style={styles.dayRowRight}>
+                      <Text style={styles.dayRowValue}>{`${day.totalEventCount} ${noun}`}</Text>
+                      <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
+                    </View>
+                  </Pressable>
                 );
               })
             )}
@@ -454,6 +528,15 @@ const styles = StyleSheet.create({
     color: colors.stone800,
     fontWeight: "600",
   },
+  consistencyLabel: {
+    fontSize: fontSize.sm,
+    color: colors.stone800,
+    fontWeight: "600",
+  },
+  consistencyMeta: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
+  },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -484,13 +567,22 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    minHeight: controlSize.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.md,
   },
+  dayRowPressed: {
+    backgroundColor: colors.backgroundMuted,
+  },
   dayRowLeft: {
     flex: 1,
     gap: 2,
+  },
+  dayRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
   dayRowLabel: {
     fontSize: fontSize.sm,

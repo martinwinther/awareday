@@ -124,3 +124,13 @@
 - Decision: Derive weekly insights from the existing weekly review summary (top activity, top check-in, busiest tracked day, and day with most check-ins) instead of adding separate analytics data or chart layers.
 - Reason: The review screen already computes deterministic seven-day totals, so deriving insights from that output keeps logic small, readable, and consistent while preserving current behavior.
 - Consequences: The review tab now surfaces simple weekly takeaways in a mobile-friendly section with no new dependencies, no Firestore schema changes, and no changes to existing weekly totals and per-day breakdown behavior.
+
+- Date: 2026-04-10
+- Decision: Reuse the History tab for weekly-review day drill-in by passing a `day=YYYY-MM-DD` query parameter and hydrating History's selected day from that value.
+- Reason: This enables actionable weekly navigation without creating a separate detail route or duplicating History rendering/edit behavior.
+- Consequences: Weekly review day rows are now tappable entry points into History for the chosen day, the existing History day picker and summaries remain unchanged, and the route param is optional with safe fallback to default local-day selection.
+
+- Date: 2026-04-10
+- Decision: Add recurring counter consistency in weekly review by deriving days-with-check-in and current streak from the existing seven-day summary for selected check-ins (water, medication, mood check, symptom check, coffee).
+- Reason: Users need practical consistency context for meaningful recurring check-ins without introducing new gamified systems, schemas, or analytics layers.
+- Consequences: Weekly review now shows restrained consistency rows for recurring check-ins present in the selected week, streaks are anchored to the selected week (or today when viewing current week), and existing weekly totals/insights behavior remains unchanged.

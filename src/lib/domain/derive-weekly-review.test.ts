@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveWeeklyCheckInConsistencyRows,
   deriveWeeklyInsightRows,
   deriveWeeklyInsightsSummary,
   deriveWeeklyReviewSummary,
@@ -219,6 +220,80 @@ describe("deriveWeeklyInsightRows", () => {
         id: "most-check-ins-day",
         label: "Day with most counters/check-ins",
         value: "No check-ins logged this week",
+      },
+    ]);
+  });
+});
+
+describe("deriveWeeklyCheckInConsistencyRows", () => {
+  it("summarizes weekly consistency for recurring counters/check-ins", () => {
+    const summary = deriveWeeklyReviewSummary(
+      [],
+      [
+        buildEventEntry({ id: "coffee-mon", label: "Coffee", timestamp: at("2026-04-06T08:30:00") }),
+        buildEventEntry({ id: "coffee-fri", label: "Coffee", timestamp: at("2026-04-10T10:30:00") }),
+        buildEventEntry({ id: "water-tue", label: "Water", timestamp: at("2026-04-07T09:00:00") }),
+        buildEventEntry({ id: "water-wed", label: "Water", timestamp: at("2026-04-08T10:00:00") }),
+        buildEventEntry({ id: "med-thu", label: "Medication", timestamp: at("2026-04-09T07:00:00") }),
+        buildEventEntry({ id: "med-fri", label: "Medication", timestamp: at("2026-04-10T07:00:00") }),
+        buildEventEntry({ id: "mood-wed", label: "Mood check", timestamp: at("2026-04-08T21:00:00") }),
+        buildEventEntry({ id: "mood-thu", label: "Mood check", timestamp: at("2026-04-09T21:00:00") }),
+        buildEventEntry({ id: "custom", label: "Stretch", timestamp: at("2026-04-09T12:00:00") }),
+      ],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyCheckInConsistencyRows(summary, new Date("2026-04-10T18:00:00"))).toEqual([
+      {
+        id: "water",
+        normalizedLabel: "water",
+        label: "Water",
+        daysWithCheckIn: 2,
+        currentStreakDays: 0,
+      },
+      {
+        id: "medication",
+        normalizedLabel: "medication",
+        label: "Medication",
+        daysWithCheckIn: 2,
+        currentStreakDays: 2,
+      },
+      {
+        id: "mood-check",
+        normalizedLabel: "mood check",
+        label: "Mood check",
+        daysWithCheckIn: 2,
+        currentStreakDays: 0,
+      },
+      {
+        id: "coffee",
+        normalizedLabel: "coffee",
+        label: "Coffee",
+        daysWithCheckIn: 2,
+        currentStreakDays: 1,
+      },
+    ]);
+  });
+
+  it("uses the selected week end as streak anchor for past weeks", () => {
+    const summary = deriveWeeklyReviewSummary(
+      [],
+      [
+        buildEventEntry({ id: "symptom-sat", label: "Symptom check", timestamp: at("2026-04-11T20:00:00") }),
+        buildEventEntry({ id: "symptom-sun", label: "Symptom check", timestamp: at("2026-04-12T20:00:00") }),
+      ],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyCheckInConsistencyRows(summary, new Date("2026-04-20T10:00:00"))).toEqual([
+      {
+        id: "symptom-check",
+        normalizedLabel: "symptom check",
+        label: "Symptom check",
+        daysWithCheckIn: 2,
+        currentStreakDays: 2,
       },
     ]);
   });
