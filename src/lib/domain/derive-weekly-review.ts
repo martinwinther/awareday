@@ -47,6 +47,33 @@ export type WeeklyCheckInConsistencyRow = {
   currentStreakDays: number;
 };
 
+export type WeeklyComparisonDirection = "up" | "down" | "same";
+
+export type WeeklyTotalComparisonRow = {
+  id: "total-activity-time" | "total-check-ins";
+  label: string;
+  currentValue: string;
+  deltaValue: string;
+  summary: string;
+  direction: WeeklyComparisonDirection;
+};
+
+export type WeeklyTopComparisonRow = {
+  normalizedLabel: string;
+  label: string;
+  currentValue: string;
+  deltaValue: string;
+  summary: string;
+  direction: WeeklyComparisonDirection;
+};
+
+export type WeeklyComparisonSummary = {
+  totalActivityTime: WeeklyTotalComparisonRow;
+  totalCheckIns: WeeklyTotalComparisonRow;
+  topActivities: WeeklyTopComparisonRow[];
+  topCheckIns: WeeklyTopComparisonRow[];
+};
+
 const recurringCheckInTargets: RecurringCheckInTarget[] = [
   { id: "water", normalizedLabel: "water", aliases: ["water"] },
   { id: "medication", normalizedLabel: "medication", aliases: ["medication"] },
@@ -253,6 +280,137 @@ function getAnchorDayIndex(summary: WeeklyReviewSummary, anchorDay: Date): numbe
   }
 
   return -1;
+}
+
+function getComparisonDirection(delta: number): WeeklyComparisonDirection {
+  if (delta > 0) {
+    return "up";
+  }
+
+  if (delta < 0) {
+    return "down";
+  }
+
+  return "same";
+}
+
+function formatSignedDuration(deltaMs: number): string {
+  if (deltaMs === 0) {
+    return "0m";
+  }
+
+  const sign = deltaMs > 0 ? "+" : "-";
+  return `${sign}${formatDuration(Math.abs(deltaMs))}`;
+}
+
+function formatDurationDeltaSummary(deltaMs: number): string {
+  if (deltaMs > 0) {
+    return `${formatDuration(deltaMs)} more than last week`;
+  }
+
+  if (deltaMs < 0) {
+    return `${formatDuration(Math.abs(deltaMs))} less than last week`;
+  }
+
+  return "Same as last week";
+}
+
+function formatSignedCheckInDelta(deltaCount: number): string {
+  if (deltaCount === 0) {
+    return "0";
+  }
+
+  return `${deltaCount > 0 ? "+" : ""}${deltaCount}`;
+}
+
+function formatCheckInDeltaSummary(deltaCount: number): string {
+  if (deltaCount === 0) {
+    return "Same as last week";
+  }
+
+  const absoluteDelta = Math.abs(deltaCount);
+  const noun = absoluteDelta === 1 ? "check-in" : "check-ins";
+  const direction = deltaCount > 0 ? "more" : "less";
+  return `${absoluteDelta} ${direction} ${noun} than last week`;
+}
+
+function sumWeeklyActivityDuration(summary: WeeklyReviewSummary): number {
+  return summary.days.reduce((total, day) => total + day.totalActivityDurationMs, 0);
+}
+
+function sumWeeklyCheckIns(summary: WeeklyReviewSummary): number {
+  return summary.days.reduce((total, day) => total + day.totalEventCount, 0);
+}
+
+export function deriveWeeklyComparisonSummary(
+  currentSummary: WeeklyReviewSummary,
+  previousSummary: WeeklyReviewSummary,
+  topItemLimit: number = 3,
+): WeeklyComparisonSummary {
+  const currentTotalActivityMs = sumWeeklyActivityDuration(currentSummary);
+  const previousTotalActivityMs = sumWeeklyActivityDuration(previousSummary);
+  const totalActivityDeltaMs = currentTotalActivityMs - previousTotalActivityMs;
+
+  const currentTotalCheckIns = sumWeeklyCheckIns(currentSummary);
+  const previousTotalCheckIns = sumWeeklyCheckIns(previousSummary);
+  const totalCheckInDelta = currentTotalCheckIns - previousTotalCheckIns;
+
+  const previousActivityByLabel = new Map(
+    previousSummary.activityTotals.map((total) => [total.normalizedLabel, total.totalDurationMs]),
+  );
+
+  const previousCheckInsByLabel = new Map(
+    previousSummary.eventCounts.map((count) => [count.normalizedLabel, count.count]),
+  );
+
+  const topActivities = currentSummary.activityTotals.slice(0, topItemLimit).map((total) => {
+    const previousValue = previousActivityByLabel.get(total.normalizedLabel) ?? 0;
+    const deltaMs = total.totalDurationMs - previousValue;
+
+    return {
+      normalizedLabel: total.normalizedLabel,
+      label: total.label,
+      currentValue: formatDuration(total.totalDurationMs),
+      deltaValue: formatSignedDuration(deltaMs),
+      summary: formatDurationDeltaSummary(deltaMs),
+      direction: getComparisonDirection(deltaMs),
+    };
+  });
+
+  const topCheckIns = currentSummary.eventCounts.slice(0, topItemLimit).map((count) => {
+    const previousValue = previousCheckInsByLabel.get(count.normalizedLabel) ?? 0;
+    const deltaCount = count.count - previousValue;
+
+    return {
+      normalizedLabel: count.normalizedLabel,
+      label: count.label,
+      currentValue: `${count.count}`,
+      deltaValue: formatSignedCheckInDelta(deltaCount),
+      summary: formatCheckInDeltaSummary(deltaCount),
+      direction: getComparisonDirection(deltaCount),
+    };
+  });
+
+  return {
+    totalActivityTime: {
+      id: "total-activity-time",
+      label: "Total tracked activity time",
+      currentValue: formatDuration(currentTotalActivityMs),
+      deltaValue: formatSignedDuration(totalActivityDeltaMs),
+      summary: formatDurationDeltaSummary(totalActivityDeltaMs),
+      direction: getComparisonDirection(totalActivityDeltaMs),
+    },
+    totalCheckIns: {
+      id: "total-check-ins",
+      label: "Total counters/check-ins",
+      currentValue: `${currentTotalCheckIns}`,
+      deltaValue: formatSignedCheckInDelta(totalCheckInDelta),
+      summary: formatCheckInDeltaSummary(totalCheckInDelta),
+      direction: getComparisonDirection(totalCheckInDelta),
+    },
+    topActivities,
+    topCheckIns,
+  };
 }
 
 export function deriveWeeklyCheckInConsistencyRows(

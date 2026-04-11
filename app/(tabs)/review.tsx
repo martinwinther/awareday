@@ -7,6 +7,7 @@ import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
+  deriveWeeklyComparisonSummary,
   deriveWeeklyCheckInConsistencyRows,
   deriveWeeklyInsightRows,
   deriveWeeklyReviewSummary,
@@ -16,6 +17,7 @@ import {
   type ActivityEntry,
   type EventEntry,
   type WeeklyCheckInConsistencyRow,
+  type WeeklyComparisonDirection,
   type WeeklyDaySummary,
 } from "@/src/lib/domain";
 import {
@@ -113,6 +115,30 @@ function describeCurrentStreak(row: WeeklyCheckInConsistencyRow): string {
   return `Current streak: ${row.currentStreakDays} ${dayNoun}`;
 }
 
+function describeComparisonDirection(direction: WeeklyComparisonDirection): string {
+  if (direction === "up") {
+    return "Up";
+  }
+
+  if (direction === "down") {
+    return "Down";
+  }
+
+  return "No change";
+}
+
+function describeTotalCheckIns(value: string): string {
+  const count = Number(value);
+  const noun = count === 1 ? "check-in" : "check-ins";
+  return `${value} ${noun}`;
+}
+
+function formatTopCheckInValue(value: string): string {
+  const count = Number(value);
+  const noun = count === 1 ? "check-in" : "check-ins";
+  return `${value} ${noun}`;
+}
+
 export default function WeeklyReviewScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -125,6 +151,8 @@ export default function WeeklyReviewScreen() {
   });
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
+  const [previousActivityEntries, setPreviousActivityEntries] = useState<ActivityEntry[]>([]);
+  const [previousEventEntries, setPreviousEventEntries] = useState<EventEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -136,6 +164,7 @@ export default function WeeklyReviewScreen() {
   );
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
   const weekEndExclusive = useMemo(() => addDays(weekStart, 7), [weekStart]);
+  const previousWeekStart = useMemo(() => addDays(weekStart, -7), [weekStart]);
   const currentWeekStart = useMemo(
     () => getStartOfLocalWeek(new Date(), firstDayOfWeek),
     [firstDayOfWeek],
@@ -150,6 +179,8 @@ export default function WeeklyReviewScreen() {
     if (!user) {
       setActivityEntries([]);
       setEventEntries([]);
+      setPreviousActivityEntries([]);
+      setPreviousEventEntries([]);
       setIsLoading(false);
       return;
     }
@@ -161,9 +192,11 @@ export default function WeeklyReviewScreen() {
       setErrorMessage(null);
 
       try {
-        const [loadedActivities, loadedEvents] = await Promise.all([
+        const [loadedActivities, loadedEvents, loadedPreviousActivities, loadedPreviousEvents] = await Promise.all([
           listActivityEntriesForDateRange(user.uid, weekStart, weekEndExclusive),
           listEventEntriesForDateRange(user.uid, weekStart, weekEndExclusive),
+          listActivityEntriesForDateRange(user.uid, previousWeekStart, weekStart),
+          listEventEntriesForDateRange(user.uid, previousWeekStart, weekStart),
         ]);
 
         if (!isActive) {
@@ -172,6 +205,8 @@ export default function WeeklyReviewScreen() {
 
         setActivityEntries(loadedActivities);
         setEventEntries(loadedEvents);
+        setPreviousActivityEntries(loadedPreviousActivities);
+        setPreviousEventEntries(loadedPreviousEvents);
       } catch (error) {
         if (!isActive) {
           return;
@@ -194,11 +229,16 @@ export default function WeeklyReviewScreen() {
     return () => {
       isActive = false;
     };
-  }, [user, weekEndExclusive, weekStart]);
+  }, [previousWeekStart, user, weekEndExclusive, weekStart]);
 
   const weeklySummary = useMemo(
     () => deriveWeeklyReviewSummary(activityEntries, eventEntries, weekStart, firstDayOfWeek),
     [activityEntries, eventEntries, weekStart, firstDayOfWeek],
+  );
+
+  const previousWeeklySummary = useMemo(
+    () => deriveWeeklyReviewSummary(previousActivityEntries, previousEventEntries, previousWeekStart, firstDayOfWeek),
+    [firstDayOfWeek, previousActivityEntries, previousEventEntries, previousWeekStart],
   );
 
   const weekLabel = useMemo(
@@ -224,6 +264,11 @@ export default function WeeklyReviewScreen() {
   const consistencyRows = useMemo(
     () => deriveWeeklyCheckInConsistencyRows(weeklySummary, new Date()),
     [weeklySummary],
+  );
+
+  const comparisonSummary = useMemo(
+    () => deriveWeeklyComparisonSummary(weeklySummary, previousWeeklySummary),
+    [previousWeeklySummary, weeklySummary],
   );
 
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
@@ -313,6 +358,105 @@ export default function WeeklyReviewScreen() {
                     <Text style={styles.totalValue}>{count.count}</Text>
                   </View>
                 ))
+              )}
+            </View>
+          </View>
+        </Card>
+
+        <Card>
+          <View style={styles.section}>
+            <SectionLabel>Compared with last week</SectionLabel>
+
+            <View style={styles.insightList}>
+              {[comparisonSummary.totalActivityTime, comparisonSummary.totalCheckIns].map((row) => (
+                <View key={row.id} style={styles.insightRow}>
+                  <View style={styles.comparisonHeaderRow}>
+                    <Text style={styles.insightLabel}>{row.label}</Text>
+                    <Text style={[
+                      styles.comparisonDirection,
+                      row.direction === "up"
+                        ? styles.comparisonDirectionUp
+                        : row.direction === "down"
+                          ? styles.comparisonDirectionDown
+                          : styles.comparisonDirectionSame,
+                    ]}>
+                      {describeComparisonDirection(row.direction)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.comparisonValueRow}>
+                    <Text style={styles.insightValue}>
+                      {row.id === "total-check-ins" ? describeTotalCheckIns(row.currentValue) : row.currentValue}
+                    </Text>
+                    <Text style={styles.comparisonDelta}>{row.deltaValue}</Text>
+                  </View>
+
+                  <Text style={styles.comparisonSummary}>{row.summary}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.comparisonGroup}>
+              <Text style={styles.comparisonSubheading}>Top activities this week</Text>
+              {comparisonSummary.topActivities.length === 0 ? (
+                <Text style={styles.emptyText}>No completed activities this week.</Text>
+              ) : (
+                <View style={styles.insightList}>
+                  {comparisonSummary.topActivities.map((row) => (
+                    <View key={`activity-compare-${row.normalizedLabel}`} style={styles.insightRow}>
+                      <View style={styles.comparisonHeaderRow}>
+                        <Text style={styles.consistencyLabel}>{row.label}</Text>
+                        <Text style={[
+                          styles.comparisonDirection,
+                          row.direction === "up"
+                            ? styles.comparisonDirectionUp
+                            : row.direction === "down"
+                              ? styles.comparisonDirectionDown
+                              : styles.comparisonDirectionSame,
+                        ]}>
+                          {describeComparisonDirection(row.direction)}
+                        </Text>
+                      </View>
+                      <View style={styles.comparisonValueRow}>
+                        <Text style={styles.insightValue}>{row.currentValue}</Text>
+                        <Text style={styles.comparisonDelta}>{row.deltaValue}</Text>
+                      </View>
+                      <Text style={styles.comparisonSummary}>{row.summary}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.comparisonGroup}>
+              <Text style={styles.comparisonSubheading}>Top counters/check-ins this week</Text>
+              {comparisonSummary.topCheckIns.length === 0 ? (
+                <Text style={styles.emptyText}>No check-ins logged this week.</Text>
+              ) : (
+                <View style={styles.insightList}>
+                  {comparisonSummary.topCheckIns.map((row) => (
+                    <View key={`check-in-compare-${row.normalizedLabel}`} style={styles.insightRow}>
+                      <View style={styles.comparisonHeaderRow}>
+                        <Text style={styles.consistencyLabel}>{row.label}</Text>
+                        <Text style={[
+                          styles.comparisonDirection,
+                          row.direction === "up"
+                            ? styles.comparisonDirectionUp
+                            : row.direction === "down"
+                              ? styles.comparisonDirectionDown
+                              : styles.comparisonDirectionSame,
+                        ]}>
+                          {describeComparisonDirection(row.direction)}
+                        </Text>
+                      </View>
+                      <View style={styles.comparisonValueRow}>
+                        <Text style={styles.insightValue}>{formatTopCheckInValue(row.currentValue)}</Text>
+                        <Text style={styles.comparisonDelta}>{row.deltaValue}</Text>
+                      </View>
+                      <Text style={styles.comparisonSummary}>{row.summary}</Text>
+                    </View>
+                  ))}
+                </View>
               )}
             </View>
           </View>
@@ -526,6 +670,48 @@ const styles = StyleSheet.create({
   insightValue: {
     fontSize: fontSize.sm,
     color: colors.stone800,
+    fontWeight: "600",
+  },
+  comparisonHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  comparisonValueRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  comparisonDirection: {
+    fontSize: fontSize.xs,
+    fontWeight: "600",
+  },
+  comparisonDirectionUp: {
+    color: colors.emerald600,
+  },
+  comparisonDirectionDown: {
+    color: colors.amber700,
+  },
+  comparisonDirectionSame: {
+    color: colors.stone500,
+  },
+  comparisonDelta: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
+    fontWeight: "600",
+  },
+  comparisonSummary: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
+  },
+  comparisonGroup: {
+    gap: spacing.sm,
+  },
+  comparisonSubheading: {
+    fontSize: fontSize.xs,
+    color: colors.stone600,
     fontWeight: "600",
   },
   consistencyLabel: {

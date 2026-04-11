@@ -48,6 +48,10 @@ export type {
   WeeklyInsightsSummary,
   WeeklyInsightRow,
   WeeklyCheckInConsistencyRow,
+  WeeklyComparisonDirection,
+  WeeklyTotalComparisonRow,
+  WeeklyTopComparisonRow,
+  WeeklyComparisonSummary,
 } from "./derive-weekly-review";
 export {
   resolveFirstDayOfWeek,
@@ -57,6 +61,7 @@ export {
   deriveWeeklyInsightsSummary,
   deriveWeeklyInsightRows,
   deriveWeeklyCheckInConsistencyRows,
+  deriveWeeklyComparisonSummary,
 } from "./derive-weekly-review";
 
 // Display helpers

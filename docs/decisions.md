@@ -134,3 +134,8 @@
 - Decision: Add recurring counter consistency in weekly review by deriving days-with-check-in and current streak from the existing seven-day summary for selected check-ins (water, medication, mood check, symptom check, coffee).
 - Reason: Users need practical consistency context for meaningful recurring check-ins without introducing new gamified systems, schemas, or analytics layers.
 - Consequences: Weekly review now shows restrained consistency rows for recurring check-ins present in the selected week, streaks are anchored to the selected week (or today when viewing current week), and existing weekly totals/insights behavior remains unchanged.
+
+- Date: 2026-04-11
+- Decision: Add a lightweight week-over-week comparison layer in weekly review by deriving current-vs-previous deltas from two existing weekly summaries (totals plus current-week top labels).
+- Reason: Users need immediate context on whether tracked time and counters/check-ins are trending up or down, without chart-heavy analytics or new data models.
+- Consequences: Weekly review now loads current and previous week entries, shows calm up/down/same deltas for total tracked activity time, top activities, total counters/check-ins, and top counters/check-ins, and keeps existing weekly totals, insights, and day drill-in behavior unchanged.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveWeeklyComparisonSummary,
   deriveWeeklyCheckInConsistencyRows,
   deriveWeeklyInsightRows,
   deriveWeeklyInsightsSummary,
@@ -296,5 +297,150 @@ describe("deriveWeeklyCheckInConsistencyRows", () => {
         currentStreakDays: 2,
       },
     ]);
+  });
+});
+
+describe("deriveWeeklyComparisonSummary", () => {
+  it("compares weekly totals and top rows against the immediately previous week", () => {
+    const currentWeekSummary = deriveWeeklyReviewSummary(
+      [
+        buildActivityEntry({ id: "focus-start-current", label: "Focus", action: "start", timestamp: at("2026-04-07T09:00:00") }),
+        buildActivityEntry({ id: "focus-end-current", label: "Focus", action: "end", timestamp: at("2026-04-07T11:00:00") }),
+        buildActivityEntry({ id: "walk-start-current", label: "Walk", action: "start", timestamp: at("2026-04-08T18:00:00") }),
+        buildActivityEntry({ id: "walk-end-current", label: "Walk", action: "end", timestamp: at("2026-04-08T18:30:00") }),
+      ],
+      [
+        buildEventEntry({ id: "coffee-current-1", label: "Coffee", timestamp: at("2026-04-07T08:30:00") }),
+        buildEventEntry({ id: "coffee-current-2", label: "Coffee", timestamp: at("2026-04-08T09:30:00") }),
+        buildEventEntry({ id: "water-current", label: "Water", timestamp: at("2026-04-09T15:00:00") }),
+      ],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    const previousWeekSummary = deriveWeeklyReviewSummary(
+      [
+        buildActivityEntry({ id: "focus-start-previous", label: "Focus", action: "start", timestamp: at("2026-03-31T09:00:00") }),
+        buildActivityEntry({ id: "focus-end-previous", label: "Focus", action: "end", timestamp: at("2026-03-31T10:00:00") }),
+        buildActivityEntry({ id: "walk-start-previous", label: "Walk", action: "start", timestamp: at("2026-04-01T18:00:00") }),
+        buildActivityEntry({ id: "walk-end-previous", label: "Walk", action: "end", timestamp: at("2026-04-01T18:45:00") }),
+      ],
+      [
+        buildEventEntry({ id: "coffee-previous", label: "Coffee", timestamp: at("2026-03-31T08:30:00") }),
+        buildEventEntry({ id: "water-previous-1", label: "Water", timestamp: at("2026-04-01T09:30:00") }),
+        buildEventEntry({ id: "water-previous-2", label: "Water", timestamp: at("2026-04-02T15:00:00") }),
+        buildEventEntry({ id: "water-previous-3", label: "Water", timestamp: at("2026-04-03T15:00:00") }),
+      ],
+      new Date("2026-04-02T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyComparisonSummary(currentWeekSummary, previousWeekSummary)).toEqual({
+      totalActivityTime: {
+        id: "total-activity-time",
+        label: "Total tracked activity time",
+        currentValue: "2h 30m",
+        deltaValue: "+45m",
+        summary: "45m more than last week",
+        direction: "up",
+      },
+      totalCheckIns: {
+        id: "total-check-ins",
+        label: "Total counters/check-ins",
+        currentValue: "3",
+        deltaValue: "-1",
+        summary: "1 less check-in than last week",
+        direction: "down",
+      },
+      topActivities: [
+        {
+          normalizedLabel: "focus",
+          label: "Focus",
+          currentValue: "2h 0m",
+          deltaValue: "+1h 0m",
+          summary: "1h 0m more than last week",
+          direction: "up",
+        },
+        {
+          normalizedLabel: "walk",
+          label: "Walk",
+          currentValue: "30m",
+          deltaValue: "-15m",
+          summary: "15m less than last week",
+          direction: "down",
+        },
+      ],
+      topCheckIns: [
+        {
+          normalizedLabel: "coffee",
+          label: "Coffee",
+          currentValue: "2",
+          deltaValue: "+1",
+          summary: "1 more check-in than last week",
+          direction: "up",
+        },
+        {
+          normalizedLabel: "water",
+          label: "Water",
+          currentValue: "1",
+          deltaValue: "-2",
+          summary: "2 less check-ins than last week",
+          direction: "down",
+        },
+      ],
+    });
+  });
+
+  it("returns same-direction comparisons when there is no week-over-week change", () => {
+    const currentWeekSummary = deriveWeeklyReviewSummary(
+      [
+        buildActivityEntry({ id: "focus-start-current", label: "Focus", action: "start", timestamp: at("2026-04-06T09:00:00") }),
+        buildActivityEntry({ id: "focus-end-current", label: "Focus", action: "end", timestamp: at("2026-04-06T10:00:00") }),
+      ],
+      [
+        buildEventEntry({ id: "coffee-current", label: "Coffee", timestamp: at("2026-04-06T08:30:00") }),
+      ],
+      new Date("2026-04-09T12:00:00"),
+      1,
+    );
+
+    const previousWeekSummary = deriveWeeklyReviewSummary(
+      [
+        buildActivityEntry({ id: "focus-start-previous", label: "Focus", action: "start", timestamp: at("2026-03-30T09:00:00") }),
+        buildActivityEntry({ id: "focus-end-previous", label: "Focus", action: "end", timestamp: at("2026-03-30T10:00:00") }),
+      ],
+      [
+        buildEventEntry({ id: "coffee-previous", label: "Coffee", timestamp: at("2026-03-30T08:30:00") }),
+      ],
+      new Date("2026-04-02T12:00:00"),
+      1,
+    );
+
+    expect(deriveWeeklyComparisonSummary(currentWeekSummary, previousWeekSummary)).toMatchObject({
+      totalActivityTime: {
+        deltaValue: "0m",
+        summary: "Same as last week",
+        direction: "same",
+      },
+      totalCheckIns: {
+        deltaValue: "0",
+        summary: "Same as last week",
+        direction: "same",
+      },
+      topActivities: [
+        {
+          deltaValue: "0m",
+          summary: "Same as last week",
+          direction: "same",
+        },
+      ],
+      topCheckIns: [
+        {
+          deltaValue: "0",
+          summary: "Same as last week",
+          direction: "same",
+        },
+      ],
+    });
   });
 });
