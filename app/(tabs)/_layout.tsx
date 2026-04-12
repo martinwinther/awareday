@@ -13,8 +13,7 @@ function TabIcon({ name, color, focused }: {
 }) {
   return (
     <View style={styles.iconWrap}>
-      <FontAwesome name={name} size={focused ? 21 : 19} color={color} />
-      <View style={[styles.activeMarker, focused ? null : styles.activeMarkerHidden]} />
+      <FontAwesome name={name} size={focused ? 20 : 19} color={color} />
     </View>
   );
 }
@@ -30,7 +29,8 @@ export default function TabLayout() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarActiveBackgroundColor: colors.tabActiveBackground,
+        tabBarActiveBackgroundColor: colors.tabActivePill,
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: [styles.tabBar, { marginBottom: floatingBottomMargin }],
         tabBarBackground: () => (
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -92,9 +92,9 @@ const styles = StyleSheet.create({
     borderColor: colors.tabBarBorder,
     borderWidth: 1,
     borderRadius: radius.full,
-    minHeight: 80,
+    minHeight: 72,
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
     paddingBottom: Platform.OS === "ios" ? spacing.sm : spacing.xs,
     overflow: "hidden",
     ...Platform.select({
@@ -116,34 +116,25 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: fontSize.xs,
     fontWeight: "600",
-    letterSpacing: 0.25,
-    lineHeight: spacing.lg,
-    marginTop: spacing.xs,
+    letterSpacing: 0.2,
+    lineHeight: 14,
+    marginTop: spacing.xs / 2,
   },
   tabItem: {
     borderRadius: radius.full,
-    minHeight: controlSize.lg + spacing.xs,
+    minHeight: controlSize.md + spacing.xs,
     marginVertical: spacing.xs / 2,
-    marginHorizontal: spacing.xs / 2,
-    paddingTop: spacing.sm,
+    marginHorizontal: spacing.xs,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.xs,
   },
   iconSlot: {
     marginTop: 0,
-    marginBottom: spacing.xs / 2,
+    marginBottom: 0,
   },
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs,
-  },
-  activeMarker: {
-    width: spacing.xl,
-    height: 3,
-    borderRadius: radius.full,
-    backgroundColor: colors.tabActiveMarker,
-  },
-  activeMarkerHidden: {
-    opacity: 0,
+    minHeight: 22,
   },
 });
