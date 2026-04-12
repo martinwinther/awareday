@@ -11,8 +11,11 @@ function TabIcon({ name, color, focused }: {
   focused: boolean;
 }) {
   return (
-    <View style={[styles.iconContainer, focused ? styles.iconContainerActive : null]}>
-      <FontAwesome name={name} size={focused ? 20 : 19} color={color} />
+    <View style={styles.iconWrap}>
+      <View style={[styles.iconContainer, focused ? styles.iconContainerActive : null]}>
+        <FontAwesome name={name} size={focused ? 20 : 19} color={color} />
+      </View>
+      {focused ? <View style={styles.activeMarker} /> : null}
     </View>
   );
 }
@@ -28,6 +31,7 @@ export default function TabLayout() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
+        tabBarActiveBackgroundColor: colors.backgroundSoft,
         tabBarStyle: [styles.tabBar, { marginBottom: floatingBottomMargin }],
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
@@ -111,12 +115,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     minHeight: controlSize.md,
     marginVertical: spacing.xs / 2,
+    marginHorizontal: 1,
     paddingTop: spacing.xs / 2,
     paddingBottom: spacing.xs / 2,
   },
   iconSlot: {
-    marginTop: 0,
+    marginTop: spacing.xs / 2,
     marginBottom: 0,
+  },
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs / 2,
   },
   iconContainer: {
     width: spacing.lg + spacing.sm + spacing.xs,
@@ -129,5 +139,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSoft,
     borderColor: colors.borderAmberSoft,
     borderWidth: 1,
+  },
+  activeMarker: {
+    width: spacing.md,
+    height: 3,
+    borderRadius: radius.full,
+    backgroundColor: colors.amber600,
   },
 });

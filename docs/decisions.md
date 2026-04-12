@@ -154,3 +154,8 @@
 - Decision: Apply an accessibility and system-consistency pass to the floating tab bar by restoring label font scaling, normalizing spacing to theme tokens, and aligning capsule colors with tab-specific tokens while reducing persistent shadow intensity.
 - Reason: The previous polish pass improved look-and-feel but still introduced technical quality gaps around large-text accessibility, micro-spacing consistency, and unnecessary elevation weight.
 - Consequences: The floating tab bar keeps the same behavior and structure, reads better under accessibility text settings, is easier to maintain within the existing design-token system, and remains premium with a lighter rendering footprint.
+
+- Date: 2026-04-12
+- Decision: Increase selected-tab clarity in the floating navigation with a subtle active item background plus a compact amber marker beneath the active icon.
+- Reason: Users reported that active-state distinction was still difficult in real usage despite prior spacing and contrast polish.
+- Consequences: Tab selection is easier to perceive at a glance while preserving existing routes, labels, and interaction behavior.
