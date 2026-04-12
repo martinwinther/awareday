@@ -139,3 +139,8 @@
 - Decision: Add a lightweight week-over-week comparison layer in weekly review by deriving current-vs-previous deltas from two existing weekly summaries (totals plus current-week top labels).
 - Reason: Users need immediate context on whether tracked time and counters/check-ins are trending up or down, without chart-heavy analytics or new data models.
 - Consequences: Weekly review now loads current and previous week entries, shows calm up/down/same deltas for total tracked activity time, top activities, total counters/check-ins, and top counters/check-ins, and keeps existing weekly totals, insights, and day drill-in behavior unchanged.
+
+- Date: 2026-04-12
+- Decision: Redesign the existing Expo Router bottom tabs as a floating capsule-style bar using screen option styling and safe-area-aware bottom spacing, rather than replacing the tab bar with a custom navigation component.
+- Reason: The product needed a detached, premium mobile-native bottom navigation treatment while preserving current tab routes, behavior, and implementation scope.
+- Consequences: Tab navigation behavior remains unchanged, the bar now floats with rounded/elevated styling and stronger active-tab emphasis, iPhone safe-area spacing is handled in the tabs layout, and no new dependencies were added.
