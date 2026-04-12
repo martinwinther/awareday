@@ -144,3 +144,13 @@
 - Decision: Redesign the existing Expo Router bottom tabs as a floating capsule-style bar using screen option styling and safe-area-aware bottom spacing, rather than replacing the tab bar with a custom navigation component.
 - Reason: The product needed a detached, premium mobile-native bottom navigation treatment while preserving current tab routes, behavior, and implementation scope.
 - Consequences: Tab navigation behavior remains unchanged, the bar now floats with rounded/elevated styling and stronger active-tab emphasis, iPhone safe-area spacing is handled in the tabs layout, and no new dependencies were added.
+
+- Date: 2026-04-12
+- Decision: Refine the floating tab bar active state from full-item fill to icon-led emphasis with tuned internal spacing rhythm and softened elevation.
+- Reason: The first floating pass felt visually blocky and misaligned; a more restrained active treatment better matches the warm, calm product aesthetic while preserving legibility.
+- Consequences: Active tabs remain clearly highlighted without heavy pasted-on blocks, icon/label alignment is more balanced, and the navigation feels more native and integrated without changing routing behavior.
+
+- Date: 2026-04-12
+- Decision: Apply an accessibility and system-consistency pass to the floating tab bar by restoring label font scaling, normalizing spacing to theme tokens, and aligning capsule colors with tab-specific tokens while reducing persistent shadow intensity.
+- Reason: The previous polish pass improved look-and-feel but still introduced technical quality gaps around large-text accessibility, micro-spacing consistency, and unnecessary elevation weight.
+- Consequences: The floating tab bar keeps the same behavior and structure, reads better under accessibility text settings, is easier to maintain within the existing design-token system, and remains premium with a lighter rendering footprint.

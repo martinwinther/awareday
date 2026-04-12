@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, radius, spacing } from "@/src/theme";
+import { colors, controlSize, fontSize, radius, spacing } from "@/src/theme";
 
 function TabIcon({ name, color, focused }: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
@@ -12,14 +12,14 @@ function TabIcon({ name, color, focused }: {
 }) {
   return (
     <View style={[styles.iconContainer, focused ? styles.iconContainerActive : null]}>
-      <FontAwesome name={name} size={20} color={color} />
+      <FontAwesome name={name} size={focused ? 20 : 19} color={color} />
     </View>
   );
 }
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const floatingBottomMargin = insets.bottom > 0 ? spacing.sm : spacing.lg;
+  const floatingBottomMargin = insets.bottom > 0 ? spacing.md : spacing.lg;
 
   return (
     <Tabs
@@ -28,7 +28,6 @@ export default function TabLayout() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarActiveBackgroundColor: colors.backgroundRaisedWarm,
         tabBarStyle: [styles.tabBar, { marginBottom: floatingBottomMargin }],
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
@@ -84,47 +83,50 @@ const styles = StyleSheet.create({
     borderColor: colors.tabBarBorder,
     borderWidth: 1,
     borderRadius: radius.full,
-    minHeight: 68,
+    minHeight: 74,
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.xs,
+    paddingBottom: Platform.OS === "ios" ? spacing.sm : spacing.xs,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: colors.shadowTabBar,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 14,
       },
       android: {
-        elevation: 10,
+        elevation: 8,
       },
     }),
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: fontSize.xs,
     fontWeight: "600",
     letterSpacing: 0.2,
-    marginBottom: 1,
+    lineHeight: spacing.lg,
+    marginTop: spacing.xs / 2,
   },
   tabItem: {
     borderRadius: radius.full,
-    marginVertical: spacing.xs,
-    paddingTop: 2,
-    paddingBottom: 1,
+    minHeight: controlSize.md,
+    marginVertical: spacing.xs / 2,
+    paddingTop: spacing.xs / 2,
+    paddingBottom: spacing.xs / 2,
   },
   iconSlot: {
-    marginTop: 2,
-    marginBottom: 1,
+    marginTop: 0,
+    marginBottom: 0,
   },
   iconContainer: {
-    width: 24,
-    height: 24,
+    width: spacing.lg + spacing.sm + spacing.xs,
+    height: spacing.lg + spacing.sm,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
   },
   iconContainerActive: {
-    backgroundColor: colors.backgroundAmberSoft,
+    backgroundColor: colors.backgroundSoft,
     borderColor: colors.borderAmberSoft,
     borderWidth: 1,
   },
