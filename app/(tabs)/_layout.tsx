@@ -1,4 +1,5 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,10 +13,8 @@ function TabIcon({ name, color, focused }: {
 }) {
   return (
     <View style={styles.iconWrap}>
-      <View style={[styles.iconContainer, focused ? styles.iconContainerActive : null]}>
-        <FontAwesome name={name} size={focused ? 20 : 19} color={color} />
-      </View>
-      {focused ? <View style={styles.activeMarker} /> : null}
+      <FontAwesome name={name} size={focused ? 21 : 19} color={color} />
+      <View style={[styles.activeMarker, focused ? null : styles.activeMarkerHidden]} />
     </View>
   );
 }
@@ -31,8 +30,14 @@ export default function TabLayout() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarActiveBackgroundColor: colors.backgroundSoft,
+        tabBarActiveBackgroundColor: colors.tabActiveBackground,
         tabBarStyle: [styles.tabBar, { marginBottom: floatingBottomMargin }],
+        tabBarBackground: () => (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <BlurView intensity={52} tint="light" style={StyleSheet.absoluteFill} />
+            <View style={styles.tabBarGlassTint} />
+          </View>
+        ),
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
         tabBarIconStyle: styles.iconSlot,
@@ -82,68 +87,63 @@ const styles = StyleSheet.create({
   tabBar: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
-    backgroundColor: colors.tabBarBackground,
+    backgroundColor: colors.transparent,
     borderTopWidth: 0,
     borderColor: colors.tabBarBorder,
     borderWidth: 1,
     borderRadius: radius.full,
-    minHeight: 74,
+    minHeight: 80,
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.xs,
+    paddingTop: spacing.sm,
     paddingBottom: Platform.OS === "ios" ? spacing.sm : spacing.xs,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: colors.shadowTabBar,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 8,
+        elevation: 10,
       },
     }),
+  },
+  tabBarGlassTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.tabBarGlassTint,
   },
   tabLabel: {
     fontSize: fontSize.xs,
     fontWeight: "600",
-    letterSpacing: 0.2,
+    letterSpacing: 0.25,
     lineHeight: spacing.lg,
-    marginTop: spacing.xs / 2,
+    marginTop: spacing.xs,
   },
   tabItem: {
     borderRadius: radius.full,
-    minHeight: controlSize.md,
+    minHeight: controlSize.lg + spacing.xs,
     marginVertical: spacing.xs / 2,
-    marginHorizontal: 1,
-    paddingTop: spacing.xs / 2,
-    paddingBottom: spacing.xs / 2,
+    marginHorizontal: spacing.xs / 2,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   iconSlot: {
-    marginTop: spacing.xs / 2,
-    marginBottom: 0,
+    marginTop: 0,
+    marginBottom: spacing.xs / 2,
   },
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs / 2,
-  },
-  iconContainer: {
-    width: spacing.lg + spacing.sm + spacing.xs,
-    height: spacing.lg + spacing.sm,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconContainerActive: {
-    backgroundColor: colors.backgroundSoft,
-    borderColor: colors.borderAmberSoft,
-    borderWidth: 1,
+    gap: spacing.xs,
   },
   activeMarker: {
-    width: spacing.md,
+    width: spacing.xl,
     height: 3,
     borderRadius: radius.full,
-    backgroundColor: colors.amber600,
+    backgroundColor: colors.tabActiveMarker,
+  },
+  activeMarkerHidden: {
+    opacity: 0,
   },
 });

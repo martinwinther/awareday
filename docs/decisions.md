@@ -159,3 +159,8 @@
 - Decision: Increase selected-tab clarity in the floating navigation with a subtle active item background plus a compact amber marker beneath the active icon.
 - Reason: Users reported that active-state distinction was still difficult in real usage despite prior spacing and contrast polish.
 - Consequences: Tab selection is easier to perceive at a glance while preserving existing routes, labels, and interaction behavior.
+
+- Date: 2026-04-12
+- Decision: Shift the floating tab bar to a translucent glass treatment and remove icon-level focus capsules in favor of larger item-level active emphasis.
+- Reason: Real-device feedback showed the bar still looked boxed-in, selected icons appeared ringed, and active-state background change felt too small.
+- Consequences: The tab bar now reads as visibly floating above screen content, selected tabs emphasize the full item rather than the icon only, and active state scanning is clearer while route behavior remains unchanged.

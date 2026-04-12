@@ -70,8 +70,11 @@ export const colors = {
   // Tab bar
   tabBarBackground: "#faf0e4",
   tabBarBorder: "rgba(214, 179, 137, 0.82)",
+  tabBarGlassTint: "rgba(255, 249, 241, 0.62)",
   tabInactive: "#615148",
   tabActive: "#1c1917",
+  tabActiveBackground: "rgba(255, 245, 228, 0.8)",
+  tabActiveMarker: "#b07b33",
   tabIndicatorActive: "#b07b33",
   tabIndicatorInactive: "#cfab81",
 
