@@ -1,10 +1,17 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Platform, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, controlSize, fontSize, radius, spacing } from "@/src/theme";
+
+const TAB_ICON_BY_ROUTE: Record<string, React.ComponentProps<typeof FontAwesome>["name"]> = {
+  index: "sun-o",
+  history: "calendar",
+  review: "line-chart",
+  settings: "cog",
+};
 
 function TabIcon({ name, color, focused }: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
@@ -18,65 +25,113 @@ function TabIcon({ name, color, focused }: {
   );
 }
 
-export default function TabLayout() {
-  const insets = useSafeAreaInsets();
-  const floatingBottomMargin = insets.bottom > 0 ? spacing.md : spacing.lg;
+function getTabLabel(routeName: string, tabBarLabel?: string | ((props: { focused: boolean; color: string; position: "below-icon" | "beside-icon"; children: string }) => React.ReactNode), title?: string): string {
+  if (typeof tabBarLabel === "string") {
+    return tabBarLabel;
+  }
+
+  if (typeof title === "string") {
+    return title;
+  }
+
+  return routeName;
+}
+
+function FloatingTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
+  const bottomOffset = insets.bottom > 0 ? insets.bottom + spacing.xs : spacing.lg;
 
   return (
+    <View pointerEvents="box-none" style={[styles.tabBarOuter, { bottom: bottomOffset }]}> 
+      <View style={styles.tabBarShell}>
+        <BlurView intensity={44} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={styles.tabBarGlassTint} />
+
+        <View style={styles.tabRow}>
+          {state.routes.map((route, index) => {
+            const descriptor = descriptors[route.key];
+            const focused = state.index === index;
+            const label = getTabLabel(route.name, descriptor.options.tabBarLabel, descriptor.options.title);
+            const iconName = TAB_ICON_BY_ROUTE[route.name] ?? "circle-o";
+            const color = focused ? colors.tabActive : colors.tabInactive;
+
+            const onPress = () => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!focused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
+
+            const onLongPress = () => {
+              navigation.emit({
+                type: "tabLongPress",
+                target: route.key,
+              });
+            };
+
+            return (
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                onLongPress={onLongPress}
+                accessibilityRole="button"
+                accessibilityState={focused ? { selected: true } : {}}
+                accessibilityLabel={descriptor.options.tabBarAccessibilityLabel}
+                testID={descriptor.options.tabBarButtonTestID}
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  focused ? styles.tabButtonActive : null,
+                  pressed ? styles.tabButtonPressed : null,
+                ]}
+              >
+                <TabIcon name={iconName} color={color} focused={focused} />
+                <Text numberOfLines={1} style={[styles.tabLabel, focused ? styles.tabLabelActive : null]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function TabLayout() {
+  return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.tabActive,
-        tabBarInactiveTintColor: colors.tabInactive,
-        tabBarActiveBackgroundColor: colors.tabActivePill,
-        tabBarLabelPosition: "below-icon",
-        tabBarStyle: [styles.tabBar, { marginBottom: floatingBottomMargin }],
-        tabBarBackground: () => (
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <BlurView intensity={52} tint="light" style={StyleSheet.absoluteFill} />
-            <View style={styles.tabBarGlassTint} />
-          </View>
-        ),
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarItemStyle: styles.tabItem,
-        tabBarIconStyle: styles.iconSlot,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Today",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="sun-o" color={color} focused={focused} />
-          ),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: "History",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="calendar" color={color} focused={focused} />
-          ),
         }}
       />
       <Tabs.Screen
         name="review"
         options={{
           title: "Review",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="line-chart" color={color} focused={focused} />
-          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="cog" color={color} focused={focused} />
-          ),
         }}
       />
     </Tabs>
@@ -84,28 +139,29 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+  tabBarOuter: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+  },
+  tabBarShell: {
     backgroundColor: colors.transparent,
-    borderTopWidth: 0,
     borderColor: colors.tabBarBorder,
     borderWidth: 1,
     borderRadius: radius.full,
-    minHeight: 72,
+    height: 72,
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.xs,
-    paddingBottom: Platform.OS === "ios" ? spacing.sm : spacing.xs,
+    paddingVertical: spacing.xs,
     overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: colors.shadowTabBar,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.18,
+        shadowRadius: 24,
       },
       android: {
-        elevation: 10,
+        elevation: 12,
       },
     }),
   },
@@ -113,28 +169,41 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.tabBarGlassTint,
   },
+  tabRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    flex: 1,
+  },
+  tabButton: {
+    flex: 1,
+    borderRadius: radius.full,
+    minHeight: controlSize.md + spacing.sm,
+    marginHorizontal: spacing.xs / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: spacing.xs / 2,
+    paddingBottom: spacing.xs / 2,
+  },
+  tabButtonActive: {
+    backgroundColor: colors.tabActivePill,
+  },
+  tabButtonPressed: {
+    opacity: 0.8,
+  },
   tabLabel: {
     fontSize: fontSize.xs,
     fontWeight: "600",
     letterSpacing: 0.2,
-    lineHeight: 14,
-    marginTop: spacing.xs / 2,
+    lineHeight: 15,
+    marginTop: 2,
+    color: colors.tabInactive,
   },
-  tabItem: {
-    borderRadius: radius.full,
-    minHeight: controlSize.md + spacing.xs,
-    marginVertical: spacing.xs / 2,
-    marginHorizontal: spacing.xs,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  iconSlot: {
-    marginTop: 0,
-    marginBottom: 0,
+  tabLabelActive: {
+    color: colors.tabActive,
   },
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 22,
+    minHeight: 20,
   },
 });

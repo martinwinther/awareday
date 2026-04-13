@@ -69,12 +69,12 @@ export const colors = {
 
   // Tab bar
   tabBarBackground: "#faf0e4",
-  tabBarBorder: "rgba(214, 179, 137, 0.82)",
-  tabBarGlassTint: "rgba(255, 249, 241, 0.5)",
+  tabBarBorder: "rgba(214, 179, 137, 0.6)",
+  tabBarGlassTint: "rgba(255, 249, 241, 0.32)",
   tabInactive: "#615148",
   tabActive: "#1c1917",
   tabActiveBackground: "rgba(255, 245, 228, 0.8)",
-  tabActivePill: "rgba(249, 236, 214, 0.9)",
+  tabActivePill: "rgba(252, 238, 214, 0.96)",
   tabActiveMarker: "#b07b33",
   tabIndicatorActive: "#b07b33",
   tabIndicatorInactive: "#cfab81",
