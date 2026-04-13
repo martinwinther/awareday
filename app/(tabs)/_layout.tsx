@@ -186,6 +186,8 @@ const styles = StyleSheet.create({
   },
   tabButtonActive: {
     backgroundColor: colors.tabActivePill,
+    borderWidth: 1,
+    borderColor: colors.tabActivePillBorder,
   },
   tabButtonPressed: {
     opacity: 0.8,
