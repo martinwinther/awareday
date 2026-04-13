@@ -164,3 +164,8 @@
 - Decision: Shift the floating tab bar to a translucent glass treatment and remove icon-level focus capsules in favor of larger item-level active emphasis.
 - Reason: Real-device feedback showed the bar still looked boxed-in, selected icons appeared ringed, and active-state background change felt too small.
 - Consequences: The tab bar now reads as visibly floating above screen content, selected tabs emphasize the full item rather than the icon only, and active state scanning is clearer while route behavior remains unchanged.
+
+- Date: 2026-04-13
+- Decision: Add optional per-label pinning for activity labels and counters/check-ins, and prioritize pinned labels first in Today quick-log chips while preserving existing label schema compatibility.
+- Reason: Users need the most important quick logs at the top without changing logging flows or requiring any data migration.
+- Consequences: Activity and event label documents now accept an optional pinned boolean, Settings exposes pin/unpin controls alongside existing label actions, Today quick-log chips sort pinned items first then alphabetically, and existing labels without pinned continue to work unchanged.

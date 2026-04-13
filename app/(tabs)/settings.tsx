@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
@@ -13,6 +13,8 @@ import {
   deleteEventLabel,
   listActivityLabels,
   listEventLabels,
+  setActivityLabelPinned,
+  setEventLabelPinned,
   updateActivityLabel,
   updateEventLabel,
 } from "@/src/lib/firestore/repositories";
@@ -41,6 +43,17 @@ function confirmDelete(name: string): Promise<boolean> {
       { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
       { text: "Delete label", style: "destructive", onPress: () => resolve(true) },
     ]);
+  });
+}
+
+function sortLabelsByPinned<TLabel extends { name: string; pinned?: boolean }>(labels: TLabel[]): TLabel[] {
+  return [...labels].sort((a, b) => {
+    const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+    if (pinDiff !== 0) {
+      return pinDiff;
+    }
+
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
   });
 }
 
@@ -111,6 +124,8 @@ export default function SettingsScreen() {
   const hasLoadedLabels = !isLoadingActivityLabels && !isLoadingEventLabels;
   const hasNoSavedLabels = hasLoadedLabels && activityLabels.length === 0 && eventLabels.length === 0;
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+  const displayedActivityLabels = useMemo(() => sortLabelsByPinned(activityLabels), [activityLabels]);
+  const displayedEventLabels = useMemo(() => sortLabelsByPinned(eventLabels), [eventLabels]);
 
   // Activity label handlers
 
@@ -176,6 +191,21 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleToggleActivityPinned = async (label: ActivityLabel) => {
+    if (!user) return;
+
+    setActiveMutationKey(`activity:pin:${label.id}`);
+    setErrorMessage(null);
+    try {
+      await setActivityLabelPinned({ userId: user.uid, id: label.id, pinned: !label.pinned });
+      await loadActivityLabelsFromFirestore(user.uid);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "We could not update that activity favorite. Please try again."));
+    } finally {
+      setActiveMutationKey(null);
+    }
+  };
+
   // Event label handlers
 
   const handleAddEventLabel = async () => {
@@ -235,6 +265,21 @@ export default function SettingsScreen() {
       await loadEventLabelsFromFirestore(user.uid);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "We could not delete that check-in label. Please try again."));
+    } finally {
+      setActiveMutationKey(null);
+    }
+  };
+
+  const handleToggleEventPinned = async (label: EventLabel) => {
+    if (!user) return;
+
+    setActiveMutationKey(`event:pin:${label.id}`);
+    setErrorMessage(null);
+    try {
+      await setEventLabelPinned({ userId: user.uid, id: label.id, pinned: !label.pinned });
+      await loadEventLabelsFromFirestore(user.uid);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "We could not update that check-in favorite. Please try again."));
     } finally {
       setActiveMutationKey(null);
     }
@@ -314,9 +359,10 @@ export default function SettingsScreen() {
               <Text style={styles.emptyText}>No activity labels yet.</Text>
             ) : (
               <View style={styles.labelList}>
-                {activityLabels.map((label) => {
+                {displayedActivityLabels.map((label) => {
                   const isEditing = editingActivityLabelId === label.id;
                   const isSaving = activeMutationKey === `activity:save:${label.id}`;
+                  const isPinning = activeMutationKey === `activity:pin:${label.id}`;
 
                   if (isEditing) {
                     return (
@@ -350,8 +396,22 @@ export default function SettingsScreen() {
 
                   return (
                     <View key={label.id} style={styles.labelRow}>
-                      <Text style={styles.labelName} numberOfLines={1}>{label.name}</Text>
+                      <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
                       <View style={styles.labelActions}>
+                        <Pressable
+                          style={[styles.actionButton, styles.actionButtonIconOnly, label.pinned && styles.actionButtonPinned, isMutating && styles.disabled]}
+                          onPress={() => void handleToggleActivityPinned(label)}
+                          disabled={isMutating}
+                          accessibilityRole="button"
+                          accessibilityLabel={label.pinned ? `Unpin ${label.name}` : `Pin ${label.name}`}
+                          accessibilityHint="Prioritizes this label in Today quick log"
+                        >
+                          {isPinning ? (
+                            <ActivityIndicator size="small" color={label.pinned ? colors.amber900 : colors.stone700} />
+                          ) : (
+                            <FontAwesome name={label.pinned ? "star" : "star-o"} size={12} color={label.pinned ? colors.amber900 : colors.stone700} />
+                          )}
+                        </Pressable>
                         <Pressable
                           style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => { setEditingActivityLabelId(label.id); setEditingActivityLabelInput(label.name); }}
@@ -417,9 +477,10 @@ export default function SettingsScreen() {
               <Text style={styles.emptyText}>No check-in labels yet.</Text>
             ) : (
               <View style={styles.labelList}>
-                {eventLabels.map((label) => {
+                {displayedEventLabels.map((label) => {
                   const isEditing = editingEventLabelId === label.id;
                   const isSaving = activeMutationKey === `event:save:${label.id}`;
+                  const isPinning = activeMutationKey === `event:pin:${label.id}`;
 
                   if (isEditing) {
                     return (
@@ -453,8 +514,22 @@ export default function SettingsScreen() {
 
                   return (
                     <View key={label.id} style={styles.labelRow}>
-                      <Text style={styles.labelName} numberOfLines={1}>{label.name}</Text>
+                      <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
                       <View style={styles.labelActions}>
+                        <Pressable
+                          style={[styles.actionButton, styles.actionButtonIconOnly, label.pinned && styles.actionButtonPinned, isMutating && styles.disabled]}
+                          onPress={() => void handleToggleEventPinned(label)}
+                          disabled={isMutating}
+                          accessibilityRole="button"
+                          accessibilityLabel={label.pinned ? `Unpin ${label.name}` : `Pin ${label.name}`}
+                          accessibilityHint="Prioritizes this label in Today quick log"
+                        >
+                          {isPinning ? (
+                            <ActivityIndicator size="small" color={label.pinned ? colors.amber900 : colors.stone700} />
+                          ) : (
+                            <FontAwesome name={label.pinned ? "star" : "star-o"} size={12} color={label.pinned ? colors.amber900 : colors.stone700} />
+                          )}
+                        </Pressable>
                         <Pressable
                           style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
                           onPress={() => { setEditingEventLabelId(label.id); setEditingEventLabelInput(label.name); }}
@@ -576,6 +651,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   labelName: { flex: 1, fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
+  labelNamePinned: { color: colors.stone900, fontWeight: "600" },
   labelActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   actionButton: {
     borderWidth: 1,
@@ -589,6 +665,10 @@ const styles = StyleSheet.create({
   actionButtonPrimary: { backgroundColor: colors.amber900, borderColor: colors.amber900 },
   actionButtonPrimaryText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
   actionButtonWarning: { backgroundColor: colors.orange700, borderColor: colors.orange700 },
+  actionButtonPinned: {
+    backgroundColor: colors.backgroundAmberSoft,
+    borderColor: colors.amber300,
+  },
   actionButtonIconOnly: {
     width: controlSize.md,
     height: controlSize.md,

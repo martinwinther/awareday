@@ -6,6 +6,7 @@ export type ActivityLabelDocument = {
   userId: string;
   name: string;
   normalizedName: string;
+  pinned?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -18,6 +19,7 @@ export type EventLabelDocument = {
   userId: string;
   name: string;
   normalizedName: string;
+  pinned?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

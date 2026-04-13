@@ -30,6 +30,12 @@ type DeleteEventLabelInput = {
   id: string;
 };
 
+type SetEventLabelPinnedInput = {
+  userId: string;
+  id: string;
+  pinned: boolean;
+};
+
 export async function createEventLabel(input: CreateEventLabelInput): Promise<EventLabel> {
   const now = Timestamp.now();
   const name = cleanLabelName(input.name);
@@ -38,6 +44,7 @@ export async function createEventLabel(input: CreateEventLabelInput): Promise<Ev
     userId: input.userId,
     name,
     normalizedName: normalizeLabelName(name),
+    pinned: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -98,4 +105,13 @@ export async function updateEventLabel(input: UpdateEventLabelInput): Promise<vo
 export async function deleteEventLabel(input: DeleteEventLabelInput): Promise<void> {
   const documentRef = doc(eventLabelsCollectionRef(input.userId), input.id);
   await deleteDoc(documentRef);
+}
+
+export async function setEventLabelPinned(input: SetEventLabelPinnedInput): Promise<void> {
+  const documentRef = doc(eventLabelsCollectionRef(input.userId), input.id);
+
+  await updateDoc(documentRef, {
+    pinned: input.pinned,
+    updatedAt: Timestamp.now(),
+  });
 }

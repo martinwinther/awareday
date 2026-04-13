@@ -30,6 +30,12 @@ type DeleteActivityLabelInput = {
   id: string;
 };
 
+type SetActivityLabelPinnedInput = {
+  userId: string;
+  id: string;
+  pinned: boolean;
+};
+
 export async function createActivityLabel(input: CreateActivityLabelInput): Promise<ActivityLabel> {
   const now = Timestamp.now();
   const name = cleanLabelName(input.name);
@@ -38,6 +44,7 @@ export async function createActivityLabel(input: CreateActivityLabelInput): Prom
     userId: input.userId,
     name,
     normalizedName: normalizeLabelName(name),
+    pinned: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -100,4 +107,13 @@ export async function updateActivityLabel(input: UpdateActivityLabelInput): Prom
 export async function deleteActivityLabel(input: DeleteActivityLabelInput): Promise<void> {
   const documentRef = doc(activityLabelsCollectionRef(input.userId), input.id);
   await deleteDoc(documentRef);
+}
+
+export async function setActivityLabelPinned(input: SetActivityLabelPinnedInput): Promise<void> {
+  const documentRef = doc(activityLabelsCollectionRef(input.userId), input.id);
+
+  await updateDoc(documentRef, {
+    pinned: input.pinned,
+    updatedAt: Timestamp.now(),
+  });
 }

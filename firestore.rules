@@ -13,11 +13,16 @@ service cloud.firestore {
       return value is string && value.size() > 0;
     }
 
+    function hasValidPinnedFlag(data) {
+      return !data.keys().hasAny(['pinned']) || data.pinned is bool;
+    }
+
     function isActivityLabelDocument(data, userId) {
       return data.keys().hasOnly([
           'userId',
           'name',
           'normalizedName',
+          'pinned',
           'createdAt',
           'updatedAt',
         ]) &&
@@ -31,6 +36,7 @@ service cloud.firestore {
         data.userId == userId &&
         isString(data.name) &&
         isString(data.normalizedName) &&
+        hasValidPinnedFlag(data) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -40,6 +46,7 @@ service cloud.firestore {
           'userId',
           'name',
           'normalizedName',
+          'pinned',
           'createdAt',
           'updatedAt',
         ]) &&
@@ -53,6 +60,7 @@ service cloud.firestore {
         data.userId == userId &&
         isString(data.name) &&
         isString(data.normalizedName) &&
+        hasValidPinnedFlag(data) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }

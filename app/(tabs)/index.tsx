@@ -62,6 +62,24 @@ type ActivityBlockEditChoice = {
   endEntry: ActivityEntry;
 };
 
+type QuickLabel = {
+  name: string;
+  pinned?: boolean;
+};
+
+function sortQuickLabels(labels: QuickLabel[]): string[] {
+  return [...labels]
+    .sort((a, b) => {
+      const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+      if (pinDiff !== 0) {
+        return pinDiff;
+      }
+
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    })
+    .map((label) => label.name);
+}
+
 function formatEditorTime(date: Date): string {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
@@ -91,8 +109,8 @@ export default function TodayScreen() {
   const { user } = useAuthUser();
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
-  const [activityQuickLabels, setActivityQuickLabels] = useState<string[] | null>(null);
-  const [eventQuickLabels, setEventQuickLabels] = useState<string[] | null>(null);
+  const [activityQuickLabels, setActivityQuickLabels] = useState<QuickLabel[] | null>(null);
+  const [eventQuickLabels, setEventQuickLabels] = useState<QuickLabel[] | null>(null);
   const [activityLabelInput, setActivityLabelInput] = useState("");
   const [eventLabelInput, setEventLabelInput] = useState("");
   const [isStartingActivity, setIsStartingActivity] = useState(false);
@@ -139,7 +157,7 @@ export default function TodayScreen() {
   const loadActivityLabels = useCallback(async (userId: string) => {
     try {
       const labels = await listActivityLabels(userId);
-      setActivityQuickLabels(labels.map((l) => l.name));
+      setActivityQuickLabels(labels.map((label) => ({ name: label.name, pinned: label.pinned })));
     } catch {
       setActivityQuickLabels([]);
     }
@@ -148,7 +166,7 @@ export default function TodayScreen() {
   const loadEventLabels = useCallback(async (userId: string) => {
     try {
       const labels = await listEventLabels(userId);
-      setEventQuickLabels(labels.map((l) => l.name));
+      setEventQuickLabels(labels.map((label) => ({ name: label.name, pinned: label.pinned })));
     } catch {
       setEventQuickLabels([]);
     }
@@ -178,12 +196,20 @@ export default function TodayScreen() {
 
   const displayedActivityLabels = useMemo(() => {
     if (activityQuickLabels === null) return [];
-    return activityQuickLabels.length === 0 ? [...fallbackActivityLabels] : activityQuickLabels;
+    if (activityQuickLabels.length === 0) {
+      return [...fallbackActivityLabels];
+    }
+
+    return sortQuickLabels(activityQuickLabels);
   }, [activityQuickLabels]);
 
   const displayedEventLabels = useMemo(() => {
     if (eventQuickLabels === null) return [];
-    return eventQuickLabels.length === 0 ? [...fallbackEventLabels] : eventQuickLabels;
+    if (eventQuickLabels.length === 0) {
+      return [...fallbackEventLabels];
+    }
+
+    return sortQuickLabels(eventQuickLabels);
   }, [eventQuickLabels]);
 
   const openActivitiesToday = useMemo(() => {
