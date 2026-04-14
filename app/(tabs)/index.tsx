@@ -8,6 +8,7 @@ import { DaySchedule } from "@/src/components/day-schedule";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser } from "@/src/lib/firebase/auth";
 import {
+  deriveCompletedActivitySessions,
   deriveDailyActivityTotals,
   deriveDailyEventCounts,
   deriveSingleDayCalendarItems,
@@ -60,6 +61,11 @@ type ActivityBlockEditChoice = {
   label: string;
   startEntry: ActivityEntry;
   endEntry: ActivityEntry;
+};
+
+type EditableActivityPair = {
+  pair: ActivityBlockEditChoice;
+  selectedEntryId: string;
 };
 
 type QuickLabel = {
@@ -123,7 +129,12 @@ export default function TodayScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [activityBlockEditChoice, setActivityBlockEditChoice] = useState<ActivityBlockEditChoice | null>(null);
+  const [editableActivityPair, setEditableActivityPair] = useState<EditableActivityPair | null>(null);
   const [editableScheduleEntry, setEditableScheduleEntry] = useState<EditableScheduleEntry | null>(null);
+  const [activityPairLabelInput, setActivityPairLabelInput] = useState("");
+  const [activityPairStartTimeInput, setActivityPairStartTimeInput] = useState("");
+  const [activityPairEndTimeInput, setActivityPairEndTimeInput] = useState("");
+  const [isSavingActivityPairEdit, setIsSavingActivityPairEdit] = useState(false);
   const [entryLabelInput, setEntryLabelInput] = useState("");
   const [entryTimeInput, setEntryTimeInput] = useState("");
   const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
@@ -225,9 +236,41 @@ export default function TodayScreen() {
   );
   const activityEntryById = useMemo(() => new Map(activityEntries.map((entry) => [entry.id, entry])), [activityEntries]);
   const eventEntryById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
+  const activityPairByEntryId = useMemo(() => {
+    const pairByEntryId = new Map<string, ActivityBlockEditChoice>();
+
+    for (const session of deriveCompletedActivitySessions(activityEntries)) {
+      const startEntry = activityEntryById.get(session.startEntryId);
+      const endEntry = activityEntryById.get(session.endEntryId);
+
+      if (!startEntry || !endEntry) {
+        continue;
+      }
+
+      const pairChoice: ActivityBlockEditChoice = {
+        label: startEntry.label,
+        startEntry,
+        endEntry,
+      };
+
+      pairByEntryId.set(startEntry.id, pairChoice);
+      pairByEntryId.set(endEntry.id, pairChoice);
+    }
+
+    return pairByEntryId;
+  }, [activityEntries, activityEntryById]);
+
+  const openActivityPairEditor = useCallback((pairChoice: ActivityBlockEditChoice, selectedEntryId: string) => {
+    setEditableActivityPair({ pair: pairChoice, selectedEntryId });
+    setEditableScheduleEntry(null);
+    setActivityPairLabelInput(pairChoice.startEntry.label);
+    setActivityPairStartTimeInput(formatEditorTime(pairChoice.startEntry.timestamp.toDate()));
+    setActivityPairEndTimeInput(formatEditorTime(pairChoice.endEntry.timestamp.toDate()));
+  }, []);
 
   const openScheduleEntryEditor = useCallback((entry: EditableScheduleEntry) => {
     const timestamp = entry.entry.timestamp.toDate();
+    setEditableActivityPair(null);
     setEditableScheduleEntry(entry);
     setEntryLabelInput(entry.entry.label);
     setEntryTimeInput(formatEditorTime(timestamp));
@@ -346,6 +389,124 @@ export default function TodayScreen() {
     openScheduleEntryEditor({ kind: "event", entry });
   }, [eventEntryById, openScheduleEntryEditor]);
 
+  const handlePressTimelineItem = useCallback((item: TodayTimelineItem) => {
+    if (item.kind === "event") {
+      openScheduleEntryEditor({ kind: "event", entry: item.entry });
+      return;
+    }
+
+    const pairChoice = activityPairByEntryId.get(item.entry.id);
+
+    if (!pairChoice) {
+      openScheduleEntryEditor({ kind: "activity", entry: item.entry });
+      return;
+    }
+
+    const isStartOnToday = isOnLocalDay(pairChoice.startEntry.timestamp.toDate(), currentTime);
+    const isEndOnToday = isOnLocalDay(pairChoice.endEntry.timestamp.toDate(), currentTime);
+
+    if (!isStartOnToday || !isEndOnToday) {
+      openScheduleEntryEditor({ kind: "activity", entry: item.entry });
+      return;
+    }
+
+    openActivityPairEditor(pairChoice, item.entry.id);
+  }, [activityPairByEntryId, currentTime, openActivityPairEditor, openScheduleEntryEditor]);
+
+  const handleSaveEditedActivityPair = useCallback(async () => {
+    if (!user || !editableActivityPair) {
+      return;
+    }
+
+    const label = activityPairLabelInput.trim();
+
+    if (label.length === 0) {
+      setErrorMessage("Please enter an activity label before saving.");
+      return;
+    }
+
+    const parsedStartTime = parseEditorTime(activityPairStartTimeInput);
+    const parsedEndTime = parseEditorTime(activityPairEndTimeInput);
+
+    if (!parsedStartTime || !parsedEndTime) {
+      setErrorMessage("Enter start and end times as HH:MM in 24-hour format.");
+      return;
+    }
+
+    const nextStartTimestamp = new Date(editableActivityPair.pair.startEntry.timestamp.toDate());
+    nextStartTimestamp.setHours(parsedStartTime.hours, parsedStartTime.minutes, 0, 0);
+
+    const nextEndTimestamp = new Date(editableActivityPair.pair.endEntry.timestamp.toDate());
+    nextEndTimestamp.setHours(parsedEndTime.hours, parsedEndTime.minutes, 0, 0);
+
+    if (nextEndTimestamp.getTime() <= nextStartTimestamp.getTime()) {
+      setErrorMessage("End time must be later than start time.");
+      return;
+    }
+
+    setIsSavingActivityPairEdit(true);
+    setErrorMessage(null);
+
+    try {
+      await Promise.all([
+        updateActivityEntry({
+          userId: user.uid,
+          id: editableActivityPair.pair.startEntry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextStartTimestamp),
+        }),
+        updateActivityEntry({
+          userId: user.uid,
+          id: editableActivityPair.pair.endEntry.id,
+          label,
+          timestamp: Timestamp.fromDate(nextEndTimestamp),
+        }),
+      ]);
+      await createActivityLabelIfMissing({ userId: user.uid, name: label });
+      await loadActivities(user.uid);
+      void loadActivityLabels(user.uid);
+
+      showSuccess("Updated activity times.");
+      setEditableActivityPair(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not save this activity. Please try again.");
+    } finally {
+      setIsSavingActivityPairEdit(false);
+    }
+  }, [
+    activityPairEndTimeInput,
+    activityPairLabelInput,
+    activityPairStartTimeInput,
+    editableActivityPair,
+    loadActivities,
+    loadActivityLabels,
+    user,
+  ]);
+
+  const handleDeleteSelectedActivityPairEntry = useCallback(async () => {
+    if (!user || !editableActivityPair) {
+      return;
+    }
+
+    setIsSavingActivityPairEdit(true);
+    setErrorMessage(null);
+
+    try {
+      await deleteActivityEntry({
+        userId: user.uid,
+        id: editableActivityPair.selectedEntryId,
+      });
+
+      await loadActivities(user.uid);
+      showSuccess("Deleted activity entry.");
+      setEditableActivityPair(null);
+    } catch (error) {
+      setErrorMessage(error instanceof FirebaseError ? error.message : "We could not delete this entry. Please try again.");
+    } finally {
+      setIsSavingActivityPairEdit(false);
+    }
+  }, [editableActivityPair, loadActivities, user]);
+
   const handleSaveEditedScheduleEntry = useCallback(async () => {
     if (!user || !editableScheduleEntry) {
       return;
@@ -444,6 +605,14 @@ export default function TodayScreen() {
     }
 
     setEditableScheduleEntry(null);
+  };
+
+  const closeActivityPairEditor = () => {
+    if (isSavingActivityPairEdit) {
+      return;
+    }
+
+    setEditableActivityPair(null);
   };
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
@@ -646,7 +815,10 @@ export default function TodayScreen() {
       {/* Timeline */}
       <Card>
         <View style={s.cardSection}>
-          <SectionLabel>Today timeline</SectionLabel>
+          <View style={s.timelineHeader}>
+            <SectionLabel>Today timeline</SectionLabel>
+            <Text style={s.timelineEditHint}>Tap an entry to edit.</Text>
+          </View>
           {(isLoadingActivities || isLoadingEvents) ? (
             <ActivityIndicator color={colors.amber600} />
           ) : todayTimeline.length === 0 ? (
@@ -658,14 +830,22 @@ export default function TodayScreen() {
               const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Check-in";
               return (
                 <View key={`${item.kind}-${entry.id}`} style={s.timelineRow}>
-                  <View style={s.timelineLeft}>
-                    <View style={[s.timelineBadge, { backgroundColor: badgeColor }]}>
-                      <Text style={s.timelineBadgeText}>{badgeLabel}</Text>
+                  <Pressable
+                    style={s.timelineRowPressable}
+                    onPress={() => handlePressTimelineItem(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${badgeLabel.toLowerCase()} entry for ${entry.label}`}
+                    accessibilityHint="Opens a lightweight editor for this timeline entry"
+                  >
+                    <View style={s.timelineLeft}>
+                      <View style={[s.timelineBadge, { backgroundColor: badgeColor }]}> 
+                        <Text style={s.timelineBadgeText}>{badgeLabel}</Text>
+                      </View>
+                      <Text style={s.timelineLabel}>{entry.label}</Text>
                     </View>
-                    <Text style={s.timelineLabel}>{entry.label}</Text>
-                  </View>
-                  <View style={s.timelineRight}>
                     <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
+                  </Pressable>
+                  <View style={s.timelineRight}>
                     <Pressable
                       style={s.deleteIconButton}
                       onPress={() => void handleDeleteTimelineItem(item)}
@@ -740,6 +920,104 @@ export default function TodayScreen() {
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               accessibilityHint="Close this picker"
+            >
+              <Text style={s.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={editableActivityPair !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActivityPairEditor}
+      >
+        <View style={s.modalBackdrop}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>Edit activity times</Text>
+            <Text style={s.modalSubtitle}>Adjust label, start, and end times. Overlaps are allowed.</Text>
+
+            <View style={s.entryEditorGroup}>
+              <Text style={s.entryEditorLabel}>Label</Text>
+              <TextInput
+                style={s.entryEditorInput}
+                value={activityPairLabelInput}
+                onChangeText={setActivityPairLabelInput}
+                editable={!isSavingActivityPairEdit}
+                placeholder="Activity label"
+                placeholderTextColor={colors.stone400}
+                accessibilityLabel="Activity label"
+                accessibilityHint="Edit the label used for this activity pair"
+              />
+            </View>
+
+            <View style={s.entryEditorGroup}>
+              <Text style={s.entryEditorLabel}>Start time (HH:MM)</Text>
+              <TextInput
+                style={s.entryEditorInput}
+                value={activityPairStartTimeInput}
+                onChangeText={setActivityPairStartTimeInput}
+                editable={!isSavingActivityPairEdit}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="09:00"
+                placeholderTextColor={colors.stone400}
+                accessibilityLabel="Activity start time"
+                accessibilityHint="Enter the activity start time as hours and minutes"
+              />
+            </View>
+
+            <View style={s.entryEditorGroup}>
+              <Text style={s.entryEditorLabel}>End time (HH:MM)</Text>
+              <TextInput
+                style={s.entryEditorInput}
+                value={activityPairEndTimeInput}
+                onChangeText={setActivityPairEndTimeInput}
+                editable={!isSavingActivityPairEdit}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="10:30"
+                placeholderTextColor={colors.stone400}
+                accessibilityLabel="Activity end time"
+                accessibilityHint="Enter the activity end time as hours and minutes"
+              />
+            </View>
+
+            <Text style={s.entryEditorNote}>End time must be later than start time.</Text>
+
+            <View style={s.entryEditorActions}>
+              <Pressable
+                style={[s.entryEditorButton, s.entryEditorDeleteButton, isSavingActivityPairEdit && s.disabled]}
+                onPress={() => void handleDeleteSelectedActivityPairEntry()}
+                disabled={isSavingActivityPairEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Delete entry"
+                accessibilityHint="Deletes the selected timeline entry"
+              >
+                <Text style={s.entryEditorDeleteText}>Delete</Text>
+              </Pressable>
+              <Pressable
+                style={[s.entryEditorButton, s.entryEditorSaveButton, isSavingActivityPairEdit && s.disabled]}
+                onPress={() => void handleSaveEditedActivityPair()}
+                disabled={isSavingActivityPairEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Save activity changes"
+                accessibilityHint="Saves the updated activity label and times"
+              >
+                <Text style={s.entryEditorSaveText}>{isSavingActivityPairEdit ? "Saving..." : "Save"}</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={s.modalCancelButton}
+              onPress={closeActivityPairEditor}
+              disabled={isSavingActivityPairEdit}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              accessibilityHint="Close this editor without saving"
             >
               <Text style={s.modalCancelText}>Cancel</Text>
             </Pressable>
@@ -963,9 +1241,27 @@ const s = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
   totalLabel: { fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
+  timelineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  timelineEditHint: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+    fontWeight: "500",
+  },
   timelineRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: spacing.md },
+  timelineRowPressable: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
   timelineLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1, minWidth: 0 },
-  timelineRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  timelineRight: { flexDirection: "row", alignItems: "center" },
   timelineBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   timelineBadgeText: { color: colors.white, fontSize: fontSize.caption, fontWeight: "600" },
   timelineLabel: { fontSize: fontSize.sm, color: colors.stone800, flex: 1 },
@@ -1047,6 +1343,10 @@ const s = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.sm,
     fontWeight: "700",
+  },
+  entryEditorNote: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
   },
   modalList: {
     gap: spacing.sm,

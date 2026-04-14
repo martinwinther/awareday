@@ -169,3 +169,8 @@
 - Decision: Add optional per-label pinning for activity labels and counters/check-ins, and prioritize pinned labels first in Today quick-log chips while preserving existing label schema compatibility.
 - Reason: Users need the most important quick logs at the top without changing logging flows or requiring any data migration.
 - Consequences: Activity and event label documents now accept an optional pinned boolean, Settings exposes pin/unpin controls alongside existing label actions, Today quick-log chips sort pinned items first then alphabetically, and existing labels without pinned continue to work unchanged.
+
+- Date: 2026-04-14
+- Decision: Add tap-to-edit timeline rows on Today and History, and use a lightweight modal editor that supports activity label/start/end updates (or single-entry editing when no matched pair exists) with end-after-start validation.
+- Reason: Users need fast in-context correction of timeline mistakes without navigating away, while keeping the timestamp-logger model and mobile-first flow simple.
+- Consequences: Timeline entries now open edit modals directly from the timeline, activity edits refresh derived totals/schedule/timeline immediately from Firestore-backed entry reloads, weekly review/insights reflect changes via existing range queries, overlapping activities remain allowed, and invalid ranges are blocked when editing paired activity times.
