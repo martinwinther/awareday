@@ -5,7 +5,7 @@ import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser, signOutCurrentUser } from "@/src/lib/firebase/auth";
-import { normalizeLabelName, type ActivityLabel, type EventLabel } from "@/src/lib/domain";
+import { normalizeLabelName, resolveActivityLabelColor, type ActivityLabel, type EventLabel } from "@/src/lib/domain";
 import {
   createActivityLabelIfMissing,
   createEventLabelIfMissing,
@@ -396,7 +396,10 @@ export default function SettingsScreen() {
 
                   return (
                     <View key={label.id} style={styles.labelRow}>
-                      <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
+                      <View style={styles.labelNameWrap}>
+                        <View style={[styles.activityDot, { backgroundColor: resolveActivityLabelColor(label) }]} />
+                        <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
+                      </View>
                       <View style={styles.labelActions}>
                         <Pressable
                           style={[styles.actionButton, styles.actionButtonIconOnly, label.pinned && styles.actionButtonPinned, isMutating && styles.disabled]}
@@ -650,6 +653,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
+  labelNameWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  activityDot: { width: 8, height: 8, borderRadius: 4 },
   labelName: { flex: 1, fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
   labelNamePinned: { color: colors.stone900, fontWeight: "600" },
   labelActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

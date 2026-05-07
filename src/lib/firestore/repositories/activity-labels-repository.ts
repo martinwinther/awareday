@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { ActivityLabel, ActivityLabelDocument } from "@/src/lib/domain/models";
+import { pickActivityLabelColor, resolveActivityLabelColor } from "@/src/lib/domain/activity-colors";
 import { cleanLabelName, normalizeLabelName } from "@/src/lib/domain/normalize-label";
 import { activityLabelsCollectionRef } from "@/src/lib/firestore/paths";
 
@@ -39,11 +40,13 @@ type SetActivityLabelPinnedInput = {
 export async function createActivityLabel(input: CreateActivityLabelInput): Promise<ActivityLabel> {
   const now = Timestamp.now();
   const name = cleanLabelName(input.name);
+  const normalizedName = normalizeLabelName(name);
 
   const created: ActivityLabelDocument = {
     userId: input.userId,
     name,
-    normalizedName: normalizeLabelName(name),
+    normalizedName,
+    color: pickActivityLabelColor(normalizedName),
     pinned: false,
     createdAt: now,
     updatedAt: now,
@@ -69,10 +72,20 @@ export async function createActivityLabelIfMissing(
 
   if (!existingSnapshot.empty) {
     const existing = existingSnapshot.docs[0];
+    const existingData = existing.data();
+    const resolvedColor = resolveActivityLabelColor(existingData);
+
+    if (!existingData.color || existingData.color.trim().length === 0) {
+      await updateDoc(doc(collectionRef, existing.id), {
+        color: resolvedColor,
+        updatedAt: Timestamp.now(),
+      });
+    }
 
     return {
       id: existing.id,
-      ...existing.data(),
+      ...existingData,
+      color: resolvedColor,
     };
   }
 
@@ -87,9 +100,27 @@ export async function listActivityLabels(userId: string): Promise<ActivityLabel[
   const labelsQuery = query(collectionRef, orderBy("name"));
   const snapshot = await getDocs(labelsQuery);
 
-  return snapshot.docs.map((item) => ({
+  const labels = snapshot.docs.map((item) => ({
     id: item.id,
     ...item.data(),
+  }));
+
+  const labelsMissingColor = labels.filter(
+    (label) => !label.color || label.color.trim().length === 0,
+  );
+
+  if (labelsMissingColor.length > 0) {
+    await Promise.allSettled(
+      labelsMissingColor.map((label) => updateDoc(doc(collectionRef, label.id), {
+        color: resolveActivityLabelColor(label),
+        updatedAt: Timestamp.now(),
+      }))
+    );
+  }
+
+  return labels.map((label) => ({
+    ...label,
+    color: resolveActivityLabelColor(label),
   }));
 }
 

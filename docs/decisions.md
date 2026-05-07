@@ -174,3 +174,8 @@
 - Decision: Add tap-to-edit timeline rows on Today and History, and use a lightweight modal editor that supports activity label/start/end updates (or single-entry editing when no matched pair exists) with end-after-start validation.
 - Reason: Users need fast in-context correction of timeline mistakes without navigating away, while keeping the timestamp-logger model and mobile-first flow simple.
 - Consequences: Timeline entries now open edit modals directly from the timeline, activity edits refresh derived totals/schedule/timeline immediately from Firestore-backed entry reloads, weekly review/insights reflect changes via existing range queries, overlapping activities remain allowed, and invalid ranges are blocked when editing paired activity times.
+
+- Date: 2026-05-07
+- Decision: Assign and persist a color for each activity label and use it across activity views.
+- Reason: Consistent color cues help users scan activity mentions quickly across schedule blocks, lists, and summaries without changing core logging behavior.
+- Consequences: Activity label documents now include an optional `color` field, missing colors are backfilled when labels load, and activity UI surfaces resolve colors per label instead of index-based palette rotation.

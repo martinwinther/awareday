@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform, useWindowDimensions } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
@@ -14,6 +14,8 @@ import {
   formatDuration,
   getStartOfLocalWeek,
   resolveFirstDayOfWeek,
+  resolveActivityLabelColor,
+  type ActivityLabel,
   type ActivityEntry,
   type EventEntry,
   type WeeklyCheckInConsistencyRow,
@@ -21,6 +23,7 @@ import {
   type WeeklyDaySummary,
 } from "@/src/lib/domain";
 import {
+  listActivityLabels,
   listActivityEntriesForDateRange,
   listEventEntriesForDateRange,
 } from "@/src/lib/firestore/repositories";
@@ -84,16 +87,6 @@ function formatDayParam(day: Date): string {
   return `${year}-${month}-${date}`;
 }
 
-function describeTopActivity(day: WeeklyDaySummary): string {
-  const top = day.activityTotals[0];
-
-  if (!top) {
-    return "No completed activities";
-  }
-
-  return `${top.label} ${formatDuration(top.totalDurationMs)}`;
-}
-
 function describeTopCheckIn(day: WeeklyDaySummary): string {
   const top = day.eventCounts[0];
 
@@ -153,6 +146,7 @@ export default function WeeklyReviewScreen() {
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
   const [previousActivityEntries, setPreviousActivityEntries] = useState<ActivityEntry[]>([]);
   const [previousEventEntries, setPreviousEventEntries] = useState<EventEntry[]>([]);
+  const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -181,6 +175,7 @@ export default function WeeklyReviewScreen() {
       setEventEntries([]);
       setPreviousActivityEntries([]);
       setPreviousEventEntries([]);
+      setActivityLabels([]);
       setIsLoading(false);
       return;
     }
@@ -231,6 +226,35 @@ export default function WeeklyReviewScreen() {
     };
   }, [previousWeekStart, user, weekEndExclusive, weekStart]);
 
+  useEffect(() => {
+    if (!user) {
+      setActivityLabels([]);
+      return;
+    }
+
+    let isActive = true;
+
+    const loadLabels = async () => {
+      try {
+        const labels = await listActivityLabels(user.uid);
+
+        if (isActive) {
+          setActivityLabels(labels);
+        }
+      } catch {
+        if (isActive) {
+          setActivityLabels([]);
+        }
+      }
+    };
+
+    void loadLabels();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user]);
+
   const weeklySummary = useMemo(
     () => deriveWeeklyReviewSummary(activityEntries, eventEntries, weekStart, firstDayOfWeek),
     [activityEntries, eventEntries, weekStart, firstDayOfWeek],
@@ -254,6 +278,24 @@ export default function WeeklyReviewScreen() {
   const totalWeeklyCheckIns = useMemo(
     () => weeklySummary.days.reduce((total, day) => total + day.totalEventCount, 0),
     [weeklySummary.days],
+  );
+
+  const activityColorByLabel = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+
+    for (const label of activityLabels) {
+      colorMap[label.normalizedName] = resolveActivityLabelColor(label);
+    }
+
+    return colorMap;
+  }, [activityLabels]);
+
+  const resolveActivityColor = useCallback(
+    (normalizedLabel: string) => resolveActivityLabelColor({
+      normalizedName: normalizedLabel,
+      color: activityColorByLabel[normalizedLabel],
+    }),
+    [activityColorByLabel],
   );
 
   const insightRows = useMemo(
@@ -333,12 +375,19 @@ export default function WeeklyReviewScreen() {
               ) : weeklySummary.activityTotals.length === 0 ? (
                 <Text style={styles.emptyText}>No completed activities this week.</Text>
               ) : (
-                weeklySummary.activityTotals.map((total) => (
-                  <View key={total.normalizedLabel} style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>{total.label}</Text>
-                    <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
-                  </View>
-                ))
+                weeklySummary.activityTotals.map((total) => {
+                  const activityColor = resolveActivityColor(total.normalizedLabel);
+
+                  return (
+                    <View key={total.normalizedLabel} style={styles.totalRow}>
+                      <View style={styles.totalLabelWrap}>
+                        <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
+                        <Text style={styles.totalLabel}>{total.label}</Text>
+                      </View>
+                      <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
+                    </View>
+                  );
+                })
               )}
             </View>
 
@@ -405,7 +454,10 @@ export default function WeeklyReviewScreen() {
                   {comparisonSummary.topActivities.map((row) => (
                     <View key={`activity-compare-${row.normalizedLabel}`} style={styles.insightRow}>
                       <View style={styles.comparisonHeaderRow}>
-                        <Text style={styles.consistencyLabel}>{row.label}</Text>
+                        <View style={styles.labelRowWithDot}>
+                          <View style={[styles.activityDot, { backgroundColor: resolveActivityColor(row.normalizedLabel) }]} />
+                          <Text style={styles.consistencyLabel}>{row.label}</Text>
+                        </View>
                         <Text style={[
                           styles.comparisonDirection,
                           row.direction === "up"
@@ -518,7 +570,21 @@ export default function WeeklyReviewScreen() {
                 >
                   <View style={styles.dayRowLeft}>
                     <Text style={styles.dayRowLabel}>{formatDayLabel(day.day, locale)}</Text>
-                    <Text style={styles.dayRowHint}>{describeTopActivity(day)}</Text>
+                    {day.activityTotals.length === 0 ? (
+                      <Text style={styles.dayRowHint}>No completed activities</Text>
+                    ) : (
+                      <View style={styles.dayRowHintRow}>
+                        <View
+                          style={[
+                            styles.activityDot,
+                            { backgroundColor: resolveActivityColor(day.activityTotals[0].normalizedLabel) },
+                          ]}
+                        />
+                        <Text style={styles.dayRowHint}>
+                          {`${day.activityTotals[0].label} ${formatDuration(day.activityTotals[0].totalDurationMs)}`}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <View style={styles.dayRowRight}>
                     <Text style={styles.dayRowValue}>{formatDuration(day.totalActivityDurationMs)}</Text>
@@ -719,6 +785,8 @@ const styles = StyleSheet.create({
     color: colors.stone800,
     fontWeight: "600",
   },
+  labelRowWithDot: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  activityDot: { width: 8, height: 8, borderRadius: 4 },
   consistencyMeta: {
     fontSize: fontSize.xs,
     color: colors.stone600,
@@ -730,11 +798,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     gap: spacing.md,
   },
-  totalLabel: {
-    flex: 1,
-    fontSize: fontSize.sm,
-    color: colors.stone700,
-  },
+  totalLabelWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  totalLabel: { flex: 1, fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: {
     fontSize: fontSize.sm,
     fontWeight: "600",
@@ -765,6 +830,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  dayRowHintRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   dayRowRight: {
     flexDirection: "row",
     alignItems: "center",

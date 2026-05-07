@@ -14,6 +14,9 @@ export type {
 // Label normalization
 export { cleanLabelName, normalizeLabelName } from "./normalize-label";
 
+// Activity label colors
+export { pickActivityLabelColor, resolveActivityLabelColor } from "./activity-colors";
+
 // Date boundaries
 export type { LocalDayBounds } from "./local-day";
 export { getLocalDayBounds, isOnLocalDay } from "./local-day";

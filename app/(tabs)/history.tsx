@@ -16,6 +16,8 @@ import {
   deriveSingleDayCalendarItems,
   formatClockTime,
   formatDuration,
+  resolveActivityLabelColor,
+  type ActivityLabel,
   type ActivityEntry,
   type EventEntry,
   type DayViewActivityBlock,
@@ -25,6 +27,7 @@ import {
 import {
   deleteActivityEntry,
   deleteEventEntry,
+  listActivityLabels,
   listActivityEntriesForDay,
   listEventEntriesForDay,
   updateActivityEntry,
@@ -151,6 +154,7 @@ export default function HistoryScreen() {
   const [selectedDay, setSelectedDay] = useState(() => getStartOfDay(new Date()));
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
+  const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityBlockEditChoice, setActivityBlockEditChoice] = useState<ActivityBlockEditChoice | null>(null);
@@ -185,6 +189,7 @@ export default function HistoryScreen() {
     if (!user) {
       setActivityEntries([]);
       setEventEntries([]);
+      setActivityLabels([]);
       setIsLoading(false);
       return;
     }
@@ -231,6 +236,35 @@ export default function HistoryScreen() {
     };
   }, [selectedDay, user]);
 
+  useEffect(() => {
+    if (!user) {
+      setActivityLabels([]);
+      return;
+    }
+
+    let isActive = true;
+
+    const loadLabels = async () => {
+      try {
+        const labels = await listActivityLabels(user.uid);
+
+        if (isActive) {
+          setActivityLabels(labels);
+        }
+      } catch {
+        if (isActive) {
+          setActivityLabels([]);
+        }
+      }
+    };
+
+    void loadLabels();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user]);
+
   const activityTotals = useMemo(
     () => deriveDailyActivityTotals(activityEntries, selectedDay),
     [activityEntries, selectedDay],
@@ -249,6 +283,22 @@ export default function HistoryScreen() {
   const dayCalendarItems = useMemo(
     () => deriveSingleDayCalendarItems(activityEntries, eventEntries, selectedDay),
     [activityEntries, eventEntries, selectedDay],
+  );
+  const activityColorByLabel = useMemo(() => {
+    const colorMap: Record<string, string> = {};
+
+    for (const label of activityLabels) {
+      colorMap[label.normalizedName] = resolveActivityLabelColor(label);
+    }
+
+    return colorMap;
+  }, [activityLabels]);
+  const resolveActivityColor = useCallback(
+    (normalizedLabel: string) => resolveActivityLabelColor({
+      normalizedName: normalizedLabel,
+      color: activityColorByLabel[normalizedLabel],
+    }),
+    [activityColorByLabel],
   );
   const activityEntryById = useMemo(() => new Map(activityEntries.map((entry) => [entry.id, entry])), [activityEntries]);
   const eventEntryById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
@@ -608,6 +658,7 @@ export default function HistoryScreen() {
               <SharedDaySchedule
                 activityBlocks={dayCalendarItems.activityBlocks}
                 eventMarkers={dayCalendarItems.eventMarkers}
+                activityColorByLabel={activityColorByLabel}
                 onPressActivityBlock={handleScheduleActivityBlockPress}
                 onPressEventMarker={handleScheduleEventMarkerPress}
               />
@@ -624,12 +675,19 @@ export default function HistoryScreen() {
               ) : activityTotals.length === 0 ? (
                 <Text style={styles.emptyText}>No completed activities for this day.</Text>
               ) : (
-                activityTotals.map((total) => (
-                  <View key={total.normalizedLabel} style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>{total.label}</Text>
-                    <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
-                  </View>
-                ))
+                activityTotals.map((total) => {
+                  const activityColor = resolveActivityColor(total.normalizedLabel);
+
+                  return (
+                    <View key={total.normalizedLabel} style={styles.totalRow}>
+                      <View style={styles.totalLabelWrap}>
+                        <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
+                        <Text style={styles.totalLabel}>{total.label}</Text>
+                      </View>
+                      <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
+                    </View>
+                  );
+                })
               )}
             </View>
 
@@ -669,6 +727,7 @@ export default function HistoryScreen() {
                 const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Check-in";
                 const badgeStyle = item.kind === "activity-start" ? styles.badgeStart : item.kind === "activity-end" ? styles.badgeEnd : styles.badgeEvent;
                 const badgeTextStyle = item.kind === "activity-start" ? styles.badgeTextStart : item.kind === "activity-end" ? styles.badgeTextEnd : styles.badgeTextEvent;
+                const activityColor = item.kind === "event" ? null : resolveActivityColor(entry.normalizedLabel);
                 return (
                   <Pressable
                     key={`${item.kind}-${entry.id}`}
@@ -679,7 +738,12 @@ export default function HistoryScreen() {
                     accessibilityHint="Opens a lightweight editor for this timeline entry"
                   >
                     <View style={styles.timelineRowLeft}>
-                      <Text style={styles.timelineRowLabel}>{entry.label}</Text>
+                      <View style={styles.timelineRowLabelWrap}>
+                        {activityColor ? (
+                          <View style={[styles.timelineDot, { backgroundColor: activityColor }]} />
+                        ) : null}
+                        <Text style={styles.timelineRowLabel}>{entry.label}</Text>
+                      </View>
                       <Text style={styles.timelineRowTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
                     </View>
                     <View style={[styles.timelineBadge, badgeStyle]}>
@@ -1103,7 +1167,9 @@ const styles = StyleSheet.create({
   summarySection: { gap: spacing.sm },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
-  totalLabel: { fontSize: fontSize.sm, color: colors.stone700 },
+  totalLabelWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  totalLabel: { flex: 1, fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
   timelineHeader: {
     flexDirection: "row",
@@ -1129,6 +1195,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   timelineRowLeft: { flex: 1, gap: 2 },
+  timelineRowLabelWrap: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  timelineDot: { width: 8, height: 8, borderRadius: 4 },
   timelineRowLabel: { fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
   timelineRowTime: { fontSize: fontSize.xs, color: colors.stone500 },
   timelineBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs },

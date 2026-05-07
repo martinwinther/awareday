@@ -6,6 +6,7 @@ export type ActivityLabelDocument = {
   userId: string;
   name: string;
   normalizedName: string;
+  color?: string;
   pinned?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;

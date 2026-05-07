@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   formatClockTime,
+  resolveActivityLabelColor,
   type DayViewActivityBlock,
   type DayViewEventMarker,
 } from "@/src/lib/domain";
@@ -26,6 +27,7 @@ type DayScheduleProps = {
   showCurrentTimeIndicator?: boolean;
   autoScrollToCurrentTimeOnMount?: boolean;
   maxVisibleHeight?: number;
+  activityColorByLabel?: Record<string, string>;
   onPressActivityBlock?: (block: DayViewActivityBlock) => void;
   onPressEventMarker?: (marker: DayViewEventMarker) => void;
 };
@@ -130,18 +132,6 @@ function buildDisplayLaneMap(
   return laneMap;
 }
 
-function getActivityColor(index: number): string {
-  const activityColors = [
-    colors.emerald600,
-    colors.indigo600,
-    colors.amber600,
-    colors.orange700,
-    colors.rose700,
-  ];
-
-  return activityColors[index % activityColors.length];
-}
-
 function hexToRgba(hex: string, alpha: number): string {
   const value = hex.replace("#", "");
   const normalized = value.length === 3
@@ -216,6 +206,7 @@ export function DaySchedule({
   showCurrentTimeIndicator = false,
   autoScrollToCurrentTimeOnMount = false,
   maxVisibleHeight,
+  activityColorByLabel,
   onPressActivityBlock,
   onPressEventMarker,
 }: DayScheduleProps) {
@@ -345,7 +336,7 @@ export function DaySchedule({
           },
         ]}
       >
-        {activityBlocks.map((block, idx) => {
+        {activityBlocks.map((block) => {
           const startMinute = (block.startTimestamp.getHours() - firstHour) * 60 + block.startTimestamp.getMinutes();
           const endMinute = (block.endTimestamp.getHours() - firstHour) * 60 + block.endTimestamp.getMinutes();
           const placement = displayLaneMap.get(block.id) ?? { laneIndex: 0, laneCount: 1, laneSpan: 1 };
@@ -356,7 +347,10 @@ export function DaySchedule({
           const left = placement.laneIndex * laneWidthPx + laneGap / 2;
           const width = Math.max((laneWidthPx * placement.laneSpan) - laneGap, 14);
 
-          const baseColor = getActivityColor(idx);
+          const baseColor = resolveActivityLabelColor({
+            normalizedName: block.normalizedLabel,
+            color: activityColorByLabel?.[block.normalizedLabel],
+          });
           const hasRoomForText = width >= 62;
           const hasRoomForCompact = width >= 34;
           const showStandardLabel = height >= 18 && hasRoomForText;
