@@ -15,7 +15,6 @@ import {
   getStartOfLocalWeek,
   resolveFirstDayOfWeek,
   resolveActivityLabelColor,
-  type ActivityLabel,
   type ActivityEntry,
   type EventEntry,
   type WeeklyCheckInConsistencyRow,
@@ -23,7 +22,6 @@ import {
   type WeeklyDaySummary,
 } from "@/src/lib/domain";
 import {
-  listActivityLabels,
   listActivityEntriesForDateRange,
   listEventEntriesForDateRange,
 } from "@/src/lib/firestore/repositories";
@@ -146,7 +144,6 @@ export default function WeeklyReviewScreen() {
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
   const [previousActivityEntries, setPreviousActivityEntries] = useState<ActivityEntry[]>([]);
   const [previousEventEntries, setPreviousEventEntries] = useState<EventEntry[]>([]);
-  const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -175,7 +172,6 @@ export default function WeeklyReviewScreen() {
       setEventEntries([]);
       setPreviousActivityEntries([]);
       setPreviousEventEntries([]);
-      setActivityLabels([]);
       setIsLoading(false);
       return;
     }
@@ -226,35 +222,6 @@ export default function WeeklyReviewScreen() {
     };
   }, [previousWeekStart, user, weekEndExclusive, weekStart]);
 
-  useEffect(() => {
-    if (!user) {
-      setActivityLabels([]);
-      return;
-    }
-
-    let isActive = true;
-
-    const loadLabels = async () => {
-      try {
-        const labels = await listActivityLabels(user.uid);
-
-        if (isActive) {
-          setActivityLabels(labels);
-        }
-      } catch {
-        if (isActive) {
-          setActivityLabels([]);
-        }
-      }
-    };
-
-    void loadLabels();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user]);
-
   const weeklySummary = useMemo(
     () => deriveWeeklyReviewSummary(activityEntries, eventEntries, weekStart, firstDayOfWeek),
     [activityEntries, eventEntries, weekStart, firstDayOfWeek],
@@ -280,22 +247,9 @@ export default function WeeklyReviewScreen() {
     [weeklySummary.days],
   );
 
-  const activityColorByLabel = useMemo(() => {
-    const colorMap: Record<string, string> = {};
-
-    for (const label of activityLabels) {
-      colorMap[label.normalizedName] = resolveActivityLabelColor(label);
-    }
-
-    return colorMap;
-  }, [activityLabels]);
-
   const resolveActivityColor = useCallback(
-    (normalizedLabel: string) => resolveActivityLabelColor({
-      normalizedName: normalizedLabel,
-      color: activityColorByLabel[normalizedLabel],
-    }),
-    [activityColorByLabel],
+    (normalizedLabel: string) => resolveActivityLabelColor({ normalizedName: normalizedLabel }),
+    [],
   );
 
   const insightRows = useMemo(

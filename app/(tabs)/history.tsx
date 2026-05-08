@@ -17,7 +17,6 @@ import {
   formatClockTime,
   formatDuration,
   resolveActivityLabelColor,
-  type ActivityLabel,
   type ActivityEntry,
   type EventEntry,
   type DayViewActivityBlock,
@@ -27,7 +26,6 @@ import {
 import {
   deleteActivityEntry,
   deleteEventEntry,
-  listActivityLabels,
   listActivityEntriesForDay,
   listEventEntriesForDay,
   updateActivityEntry,
@@ -154,7 +152,6 @@ export default function HistoryScreen() {
   const [selectedDay, setSelectedDay] = useState(() => getStartOfDay(new Date()));
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
-  const [activityLabels, setActivityLabels] = useState<ActivityLabel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityBlockEditChoice, setActivityBlockEditChoice] = useState<ActivityBlockEditChoice | null>(null);
@@ -189,7 +186,6 @@ export default function HistoryScreen() {
     if (!user) {
       setActivityEntries([]);
       setEventEntries([]);
-      setActivityLabels([]);
       setIsLoading(false);
       return;
     }
@@ -236,35 +232,6 @@ export default function HistoryScreen() {
     };
   }, [selectedDay, user]);
 
-  useEffect(() => {
-    if (!user) {
-      setActivityLabels([]);
-      return;
-    }
-
-    let isActive = true;
-
-    const loadLabels = async () => {
-      try {
-        const labels = await listActivityLabels(user.uid);
-
-        if (isActive) {
-          setActivityLabels(labels);
-        }
-      } catch {
-        if (isActive) {
-          setActivityLabels([]);
-        }
-      }
-    };
-
-    void loadLabels();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user]);
-
   const activityTotals = useMemo(
     () => deriveDailyActivityTotals(activityEntries, selectedDay),
     [activityEntries, selectedDay],
@@ -284,21 +251,9 @@ export default function HistoryScreen() {
     () => deriveSingleDayCalendarItems(activityEntries, eventEntries, selectedDay),
     [activityEntries, eventEntries, selectedDay],
   );
-  const activityColorByLabel = useMemo(() => {
-    const colorMap: Record<string, string> = {};
-
-    for (const label of activityLabels) {
-      colorMap[label.normalizedName] = resolveActivityLabelColor(label);
-    }
-
-    return colorMap;
-  }, [activityLabels]);
   const resolveActivityColor = useCallback(
-    (normalizedLabel: string) => resolveActivityLabelColor({
-      normalizedName: normalizedLabel,
-      color: activityColorByLabel[normalizedLabel],
-    }),
-    [activityColorByLabel],
+    (normalizedLabel: string) => resolveActivityLabelColor({ normalizedName: normalizedLabel }),
+    [],
   );
   const activityEntryById = useMemo(() => new Map(activityEntries.map((entry) => [entry.id, entry])), [activityEntries]);
   const eventEntryById = useMemo(() => new Map(eventEntries.map((entry) => [entry.id, entry])), [eventEntries]);
@@ -658,7 +613,6 @@ export default function HistoryScreen() {
               <SharedDaySchedule
                 activityBlocks={dayCalendarItems.activityBlocks}
                 eventMarkers={dayCalendarItems.eventMarkers}
-                activityColorByLabel={activityColorByLabel}
                 onPressActivityBlock={handleScheduleActivityBlockPress}
                 onPressEventMarker={handleScheduleEventMarkerPress}
               />

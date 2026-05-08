@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { ActivityLabel, ActivityLabelDocument } from "@/src/lib/domain/models";
-import { pickActivityLabelColor, resolveActivityLabelColor } from "@/src/lib/domain/activity-colors";
+import { pickActivityLabelColor } from "@/src/lib/domain/activity-colors";
 import { cleanLabelName, normalizeLabelName } from "@/src/lib/domain/normalize-label";
 import { activityLabelsCollectionRef } from "@/src/lib/firestore/paths";
 
@@ -72,20 +72,9 @@ export async function createActivityLabelIfMissing(
 
   if (!existingSnapshot.empty) {
     const existing = existingSnapshot.docs[0];
-    const existingData = existing.data();
-    const resolvedColor = resolveActivityLabelColor(existingData);
-
-    if (!existingData.color || existingData.color.trim().length === 0) {
-      await updateDoc(doc(collectionRef, existing.id), {
-        color: resolvedColor,
-        updatedAt: Timestamp.now(),
-      });
-    }
-
     return {
       id: existing.id,
-      ...existingData,
-      color: resolvedColor,
+      ...existing.data(),
     };
   }
 
@@ -100,27 +89,9 @@ export async function listActivityLabels(userId: string): Promise<ActivityLabel[
   const labelsQuery = query(collectionRef, orderBy("name"));
   const snapshot = await getDocs(labelsQuery);
 
-  const labels = snapshot.docs.map((item) => ({
+  return snapshot.docs.map((item) => ({
     id: item.id,
     ...item.data(),
-  }));
-
-  const labelsMissingColor = labels.filter(
-    (label) => !label.color || label.color.trim().length === 0,
-  );
-
-  if (labelsMissingColor.length > 0) {
-    await Promise.allSettled(
-      labelsMissingColor.map((label) => updateDoc(doc(collectionRef, label.id), {
-        color: resolveActivityLabelColor(label),
-        updatedAt: Timestamp.now(),
-      }))
-    );
-  }
-
-  return labels.map((label) => ({
-    ...label,
-    color: resolveActivityLabelColor(label),
   }));
 }
 
