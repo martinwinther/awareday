@@ -16,6 +16,7 @@ import {
   deriveSingleDayCalendarItems,
   formatClockTime,
   formatDuration,
+  buildActivitySurface,
   resolveActivityLabelColor,
   type ActivityEntry,
   type EventEntry,
@@ -631,12 +632,23 @@ export default function HistoryScreen() {
               ) : (
                 activityTotals.map((total) => {
                   const activityColor = resolveActivityColor(total.normalizedLabel);
+                  const activitySurface = buildActivitySurface(activityColor, {
+                    backgroundAlpha: 0.16,
+                    borderAlpha: 0.5,
+                    textAlpha: 0.95,
+                  });
 
                   return (
                     <View key={total.normalizedLabel} style={styles.totalRow}>
-                      <View style={styles.totalLabelWrap}>
-                        <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
-                        <Text style={styles.totalLabel}>{total.label}</Text>
+                      <View
+                        style={[
+                          styles.activityPill,
+                          { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                        ]}
+                      >
+                        <Text style={[styles.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
+                          {total.label}
+                        </Text>
                       </View>
                       <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
                     </View>
@@ -682,6 +694,9 @@ export default function HistoryScreen() {
                 const badgeStyle = item.kind === "activity-start" ? styles.badgeStart : item.kind === "activity-end" ? styles.badgeEnd : styles.badgeEvent;
                 const badgeTextStyle = item.kind === "activity-start" ? styles.badgeTextStart : item.kind === "activity-end" ? styles.badgeTextEnd : styles.badgeTextEvent;
                 const activityColor = item.kind === "event" ? null : resolveActivityColor(entry.normalizedLabel);
+                const activitySurface = activityColor
+                  ? buildActivitySurface(activityColor, { backgroundAlpha: 0.14, borderAlpha: 0.5, textAlpha: 0.95 })
+                  : null;
                 return (
                   <Pressable
                     key={`${item.kind}-${entry.id}`}
@@ -692,12 +707,24 @@ export default function HistoryScreen() {
                     accessibilityHint="Opens a lightweight editor for this timeline entry"
                   >
                     <View style={styles.timelineRowLeft}>
-                      <View style={styles.timelineRowLabelWrap}>
-                        {activityColor ? (
-                          <View style={[styles.timelineDot, { backgroundColor: activityColor }]} />
-                        ) : null}
+                      {activitySurface ? (
+                        <View
+                          style={[
+                            styles.activityPill,
+                            styles.timelineActivityPill,
+                            { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                          ]}
+                        >
+                          <Text
+                            style={[styles.activityPillText, styles.timelineActivityPillText, { color: activitySurface.text }]}
+                            numberOfLines={1}
+                          >
+                            {entry.label}
+                          </Text>
+                        </View>
+                      ) : (
                         <Text style={styles.timelineRowLabel}>{entry.label}</Text>
-                      </View>
+                      )}
                       <Text style={styles.timelineRowTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
                     </View>
                     <View style={[styles.timelineBadge, badgeStyle]}>
@@ -1121,8 +1148,16 @@ const styles = StyleSheet.create({
   summarySection: { gap: spacing.sm },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
-  totalLabelWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  activityPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    maxWidth: "100%",
+    flexShrink: 1,
+  },
+  activityPillText: { fontSize: fontSize.sm, fontWeight: "600" },
   totalLabel: { flex: 1, fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
   timelineHeader: {
@@ -1149,10 +1184,10 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   timelineRowLeft: { flex: 1, gap: 2 },
-  timelineRowLabelWrap: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  timelineDot: { width: 8, height: 8, borderRadius: 4 },
   timelineRowLabel: { fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
   timelineRowTime: { fontSize: fontSize.xs, color: colors.stone500 },
+  timelineActivityPill: { paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  timelineActivityPillText: { fontSize: fontSize.sm },
   timelineBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs },
   badgeStart: { backgroundColor: colors.emerald50 },
   badgeEnd: { backgroundColor: colors.backgroundAmberSoft },

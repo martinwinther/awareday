@@ -9,6 +9,18 @@ const activityColorPalette = [
   "#6f8a4c",
 ];
 
+type ActivitySurfaceOptions = {
+  backgroundAlpha?: number;
+  borderAlpha?: number;
+  textAlpha?: number;
+};
+
+export type ActivitySurface = {
+  background: string;
+  border: string;
+  text: string;
+};
+
 function hashLabel(value: string): number {
   let hash = 0;
 
@@ -28,6 +40,36 @@ export function pickActivityLabelColor(normalizedName: string): string {
 
   const hash = hashLabel(safeName);
   return activityColorPalette[hash % activityColorPalette.length];
+}
+
+export function hexToRgba(hex: string, alpha: number): string {
+  const value = hex.replace("#", "");
+  const normalized = value.length === 3
+    ? value.split("").map((char) => `${char}${char}`).join("")
+    : value;
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+export function buildActivitySurface(
+  color: string,
+  options: ActivitySurfaceOptions = {},
+): ActivitySurface {
+  const {
+    backgroundAlpha = 0.16,
+    borderAlpha = 0.5,
+    textAlpha = 0.95,
+  } = options;
+
+  return {
+    background: hexToRgba(color, backgroundAlpha),
+    border: hexToRgba(color, borderAlpha),
+    text: hexToRgba(color, textAlpha),
+  };
 }
 
 export function resolveActivityLabelColor(label: { normalizedName: string; color?: string | null }): string {

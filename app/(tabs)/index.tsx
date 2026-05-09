@@ -15,6 +15,7 @@ import {
   deriveOpenActivities,
   deriveTodayTimeline,
   normalizeLabelName,
+  buildActivitySurface,
   resolveActivityLabelColor,
   formatClockTime,
   formatDuration,
@@ -721,18 +722,27 @@ export default function TodayScreen() {
                 <View style={s.chipRow}>
                   {displayedActivityLabels.map((label) => {
                     const activityColor = resolveActivityLabelColor(label);
+                    const chipSurface = buildActivitySurface(activityColor, {
+                      backgroundAlpha: 0.22,
+                      borderAlpha: 0.7,
+                      textAlpha: 0.95,
+                    });
 
                     return (
                       <Pressable
                         key={label.normalizedName}
-                        style={[s.chip, isMutatingActivity && s.disabled]}
+                        style={[
+                          s.chip,
+                          {
+                            backgroundColor: chipSurface.background,
+                            borderColor: chipSurface.border,
+                          },
+                          isMutatingActivity && s.disabled,
+                        ]}
                         onPress={() => void handleStartActivity(label.name)}
                         disabled={isMutatingActivity}
                       >
-                        <View style={s.chipContent}>
-                          <View style={[s.chipDot, { backgroundColor: activityColor }]} />
-                          <Text style={s.chipText}>{label.name}</Text>
-                        </View>
+                        <Text style={[s.chipText, { color: chipSurface.text }]}>{label.name}</Text>
                       </Pressable>
                     );
                   })}
@@ -793,13 +803,20 @@ export default function TodayScreen() {
           ) : (
             openActivitiesToday.map((entry) => {
               const activityColor = resolveActivityColor(entry.normalizedLabel);
+              const activitySurface = buildActivitySurface(activityColor, {
+                backgroundAlpha: 0.18,
+                borderAlpha: 0.6,
+                textAlpha: 0.95,
+              });
 
               return (
                 <View key={entry.id} style={s.openActivityRow}>
                   <View style={s.openActivityInfo}>
-                    <View style={s.openActivityLabelRow}>
-                      <View style={[s.activityDot, { backgroundColor: activityColor }]} />
-                      <Text style={s.openActivityLabel}>{entry.label}</Text>
+                    <View style={[s.activityPill, { backgroundColor: activitySurface.background, borderColor: activitySurface.border }]}
+                    >
+                      <Text style={[s.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
+                        {entry.label}
+                      </Text>
                     </View>
                     <Text style={s.openActivityTime}>Started {formatClockTime(entry.timestamp.toDate())}</Text>
                   </View>
@@ -830,12 +847,19 @@ export default function TodayScreen() {
               ) : (
                 todayTotals.map((total) => {
                   const activityColor = resolveActivityColor(total.normalizedLabel);
+                  const activitySurface = buildActivitySurface(activityColor, {
+                    backgroundAlpha: 0.16,
+                    borderAlpha: 0.5,
+                    textAlpha: 0.95,
+                  });
 
                   return (
                     <View key={total.normalizedLabel} style={s.totalRow}>
-                      <View style={s.totalLabelWrap}>
-                        <View style={[s.totalDot, { backgroundColor: activityColor }]} />
-                        <Text style={s.totalLabel}>{total.label}</Text>
+                      <View style={[s.activityPill, { backgroundColor: activitySurface.background, borderColor: activitySurface.border }]}
+                      >
+                        <Text style={[s.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
+                          {total.label}
+                        </Text>
                       </View>
                       <Text style={s.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
                     </View>
@@ -903,6 +927,9 @@ export default function TodayScreen() {
               const badgeColor = item.kind === "activity-start" ? colors.emerald600 : item.kind === "activity-end" ? colors.amber600 : colors.indigo600;
               const badgeLabel = item.kind === "activity-start" ? "Started" : item.kind === "activity-end" ? "Ended" : "Check-in";
               const activityColor = item.kind === "event" ? null : resolveActivityColor(entry.normalizedLabel);
+              const activitySurface = activityColor
+                ? buildActivitySurface(activityColor, { backgroundAlpha: 0.14, borderAlpha: 0.5, textAlpha: 0.95 })
+                : null;
               return (
                 <View key={`${item.kind}-${entry.id}`} style={s.timelineRow}>
                   <Pressable
@@ -916,10 +943,24 @@ export default function TodayScreen() {
                       <View style={[s.timelineBadge, { backgroundColor: badgeColor }]}> 
                         <Text style={s.timelineBadgeText}>{badgeLabel}</Text>
                       </View>
-                      {activityColor ? (
-                        <View style={[s.timelineDot, { backgroundColor: activityColor }]} />
-                      ) : null}
-                      <Text style={s.timelineLabel}>{entry.label}</Text>
+                      {activitySurface ? (
+                        <View
+                          style={[
+                            s.activityPill,
+                            s.timelineActivityPill,
+                            { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                          ]}
+                        >
+                          <Text
+                            style={[s.activityPillText, s.timelineActivityPillText, { color: activitySurface.text }]}
+                            numberOfLines={1}
+                          >
+                            {entry.label}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={s.timelineLabel}>{entry.label}</Text>
+                      )}
                     </View>
                     <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
                   </Pressable>
@@ -1303,17 +1344,22 @@ const s = StyleSheet.create({
   chipLabel: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone500, marginBottom: spacing.sm },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: { backgroundColor: colors.backgroundSoft, borderWidth: 1, borderColor: colors.amber300, borderRadius: radius.full, minHeight: controlSize.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, justifyContent: "center" },
-  chipContent: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  chipDot: { width: 8, height: 8, borderRadius: 4 },
   chipText: { fontSize: fontSize.sm, color: colors.stone700, fontWeight: "600" },
   countText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone600 },
   emptyText: { fontSize: fontSize.sm, color: colors.stone500, fontStyle: "italic" },
   openActivityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.backgroundSoft, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.borderLight },
   openActivityInfo: { flex: 1, gap: 2 },
-  openActivityLabelRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  openActivityLabel: { fontSize: fontSize.sm, fontWeight: "600", color: colors.stone900 },
+  activityPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    maxWidth: "100%",
+    flexShrink: 1,
+  },
+  activityPillText: { fontSize: fontSize.sm, fontWeight: "600" },
   openActivityTime: { fontSize: fontSize.xs, color: colors.stone500 },
-  activityDot: { width: 9, height: 9, borderRadius: 4.5 },
   endSmallButton: { backgroundColor: colors.orange700, borderRadius: radius.sm, minHeight: controlSize.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: "center" },
   endSmallButtonText: { color: colors.white, fontSize: fontSize.xs, fontWeight: "600" },
   summaryGroup: { gap: spacing.lg },
@@ -1321,8 +1367,6 @@ const s = StyleSheet.create({
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
   cardSection: { gap: spacing.sm },
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.xs },
-  totalLabelWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  totalDot: { width: 8, height: 8, borderRadius: 4 },
   totalLabel: { flex: 1, fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: { fontSize: fontSize.sm, fontWeight: "600", color: colors.amber800 },
   timelineHeader: {
@@ -1348,8 +1392,9 @@ const s = StyleSheet.create({
   timelineRight: { flexDirection: "row", alignItems: "center" },
   timelineBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   timelineBadgeText: { color: colors.white, fontSize: fontSize.caption, fontWeight: "600" },
-  timelineDot: { width: 8, height: 8, borderRadius: 4 },
   timelineLabel: { fontSize: fontSize.sm, color: colors.stone800, flex: 1 },
+  timelineActivityPill: { paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  timelineActivityPillText: { fontSize: fontSize.sm },
   timelineTime: { fontSize: fontSize.xs, color: colors.stone500 },
   deleteIconButton: {
     width: controlSize.md,

@@ -15,7 +15,12 @@ export type {
 export { cleanLabelName, normalizeLabelName } from "./normalize-label";
 
 // Activity label colors
-export { pickActivityLabelColor, resolveActivityLabelColor } from "./activity-colors";
+export {
+  pickActivityLabelColor,
+  resolveActivityLabelColor,
+  hexToRgba,
+  buildActivitySurface,
+} from "./activity-colors";
 
 // Date boundaries
 export type { LocalDayBounds } from "./local-day";

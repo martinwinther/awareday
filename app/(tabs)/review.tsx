@@ -14,6 +14,7 @@ import {
   formatDuration,
   getStartOfLocalWeek,
   resolveFirstDayOfWeek,
+  buildActivitySurface,
   resolveActivityLabelColor,
   type ActivityEntry,
   type EventEntry,
@@ -331,12 +332,23 @@ export default function WeeklyReviewScreen() {
               ) : (
                 weeklySummary.activityTotals.map((total) => {
                   const activityColor = resolveActivityColor(total.normalizedLabel);
+                  const activitySurface = buildActivitySurface(activityColor, {
+                    backgroundAlpha: 0.16,
+                    borderAlpha: 0.5,
+                    textAlpha: 0.95,
+                  });
 
                   return (
                     <View key={total.normalizedLabel} style={styles.totalRow}>
-                      <View style={styles.totalLabelWrap}>
-                        <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
-                        <Text style={styles.totalLabel}>{total.label}</Text>
+                      <View
+                        style={[
+                          styles.activityPill,
+                          { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                        ]}
+                      >
+                        <Text style={[styles.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
+                          {total.label}
+                        </Text>
                       </View>
                       <Text style={styles.totalValue}>{formatDuration(total.totalDurationMs)}</Text>
                     </View>
@@ -405,31 +417,49 @@ export default function WeeklyReviewScreen() {
                 <Text style={styles.emptyText}>No completed activities this week.</Text>
               ) : (
                 <View style={styles.insightList}>
-                  {comparisonSummary.topActivities.map((row) => (
-                    <View key={`activity-compare-${row.normalizedLabel}`} style={styles.insightRow}>
-                      <View style={styles.comparisonHeaderRow}>
-                        <View style={styles.labelRowWithDot}>
-                          <View style={[styles.activityDot, { backgroundColor: resolveActivityColor(row.normalizedLabel) }]} />
-                          <Text style={styles.consistencyLabel}>{row.label}</Text>
+                  {comparisonSummary.topActivities.map((row) => {
+                    const activitySurface = buildActivitySurface(resolveActivityColor(row.normalizedLabel), {
+                      backgroundAlpha: 0.14,
+                      borderAlpha: 0.5,
+                      textAlpha: 0.95,
+                    });
+
+                    return (
+                      <View key={`activity-compare-${row.normalizedLabel}`} style={styles.insightRow}>
+                        <View style={styles.comparisonHeaderRow}>
+                          <View
+                            style={[
+                              styles.activityPill,
+                              styles.comparisonActivityPill,
+                              { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                            ]}
+                          >
+                            <Text
+                              style={[styles.activityPillText, styles.comparisonActivityPillText, { color: activitySurface.text }]}
+                              numberOfLines={1}
+                            >
+                              {row.label}
+                            </Text>
+                          </View>
+                          <Text style={[
+                            styles.comparisonDirection,
+                            row.direction === "up"
+                              ? styles.comparisonDirectionUp
+                              : row.direction === "down"
+                                ? styles.comparisonDirectionDown
+                                : styles.comparisonDirectionSame,
+                          ]}>
+                            {describeComparisonDirection(row.direction)}
+                          </Text>
                         </View>
-                        <Text style={[
-                          styles.comparisonDirection,
-                          row.direction === "up"
-                            ? styles.comparisonDirectionUp
-                            : row.direction === "down"
-                              ? styles.comparisonDirectionDown
-                              : styles.comparisonDirectionSame,
-                        ]}>
-                          {describeComparisonDirection(row.direction)}
-                        </Text>
+                        <View style={styles.comparisonValueRow}>
+                          <Text style={styles.insightValue}>{row.currentValue}</Text>
+                          <Text style={styles.comparisonDelta}>{row.deltaValue}</Text>
+                        </View>
+                        <Text style={styles.comparisonSummary}>{row.summary}</Text>
                       </View>
-                      <View style={styles.comparisonValueRow}>
-                        <Text style={styles.insightValue}>{row.currentValue}</Text>
-                        <Text style={styles.comparisonDelta}>{row.deltaValue}</Text>
-                      </View>
-                      <Text style={styles.comparisonSummary}>{row.summary}</Text>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -513,39 +543,55 @@ export default function WeeklyReviewScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.amber600} />
             ) : (
-              weeklySummary.days.map((day) => (
-                <Pressable
-                  key={`activity-${day.day.toISOString()}`}
-                  style={({ pressed }) => [styles.dayRow, pressed && styles.dayRowPressed]}
-                  onPress={() => openHistoryForDay(day.day)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open History for ${formatDayLabel(day.day, locale)}`}
-                  accessibilityHint="Navigates to History with this day selected"
-                >
-                  <View style={styles.dayRowLeft}>
-                    <Text style={styles.dayRowLabel}>{formatDayLabel(day.day, locale)}</Text>
-                    {day.activityTotals.length === 0 ? (
-                      <Text style={styles.dayRowHint}>No completed activities</Text>
-                    ) : (
-                      <View style={styles.dayRowHintRow}>
-                        <View
-                          style={[
-                            styles.activityDot,
-                            { backgroundColor: resolveActivityColor(day.activityTotals[0].normalizedLabel) },
-                          ]}
-                        />
-                        <Text style={styles.dayRowHint}>
-                          {`${day.activityTotals[0].label} ${formatDuration(day.activityTotals[0].totalDurationMs)}`}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.dayRowRight}>
-                    <Text style={styles.dayRowValue}>{formatDuration(day.totalActivityDurationMs)}</Text>
-                    <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
-                  </View>
-                </Pressable>
-              ))
+              weeklySummary.days.map((day) => {
+                const topActivity = day.activityTotals[0];
+                const activitySurface = topActivity
+                  ? buildActivitySurface(resolveActivityColor(topActivity.normalizedLabel), {
+                    backgroundAlpha: 0.14,
+                    borderAlpha: 0.5,
+                    textAlpha: 0.95,
+                  })
+                  : null;
+
+                return (
+                  <Pressable
+                    key={`activity-${day.day.toISOString()}`}
+                    style={({ pressed }) => [styles.dayRow, pressed && styles.dayRowPressed]}
+                    onPress={() => openHistoryForDay(day.day)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open History for ${formatDayLabel(day.day, locale)}`}
+                    accessibilityHint="Navigates to History with this day selected"
+                  >
+                    <View style={styles.dayRowLeft}>
+                      <Text style={styles.dayRowLabel}>{formatDayLabel(day.day, locale)}</Text>
+                      {!topActivity || !activitySurface ? (
+                        <Text style={styles.dayRowHint}>No completed activities</Text>
+                      ) : (
+                        <View style={styles.dayRowHintRow}>
+                          <View
+                            style={[
+                              styles.activityPill,
+                              styles.dayRowActivityPill,
+                              { backgroundColor: activitySurface.background, borderColor: activitySurface.border },
+                            ]}
+                          >
+                            <Text
+                              style={[styles.activityPillText, styles.dayRowActivityPillText, { color: activitySurface.text }]}
+                              numberOfLines={1}
+                            >
+                              {`${topActivity.label} ${formatDuration(topActivity.totalDurationMs)}`}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.dayRowRight}>
+                      <Text style={styles.dayRowValue}>{formatDuration(day.totalActivityDurationMs)}</Text>
+                      <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
+                    </View>
+                  </Pressable>
+                );
+              })
             )}
           </View>
         </Card>
@@ -739,8 +785,18 @@ const styles = StyleSheet.create({
     color: colors.stone800,
     fontWeight: "600",
   },
-  labelRowWithDot: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  activityPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    maxWidth: "100%",
+    flexShrink: 1,
+  },
+  activityPillText: { fontSize: fontSize.sm, fontWeight: "600" },
+  comparisonActivityPill: { paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  comparisonActivityPillText: { fontSize: fontSize.sm },
   consistencyMeta: {
     fontSize: fontSize.xs,
     color: colors.stone600,
@@ -752,7 +808,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     gap: spacing.md,
   },
-  totalLabelWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   totalLabel: { flex: 1, fontSize: fontSize.sm, color: colors.stone700 },
   totalValue: {
     fontSize: fontSize.sm,
@@ -785,6 +840,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   dayRowHintRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  dayRowActivityPill: { paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  dayRowActivityPillText: { fontSize: fontSize.xs },
   dayRowRight: {
     flexDirection: "row",
     alignItems: "center",

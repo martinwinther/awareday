@@ -5,7 +5,7 @@ import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
 import { SectionLabel } from "@/src/components/section-label";
 import { useAuthUser, signOutCurrentUser } from "@/src/lib/firebase/auth";
-import { normalizeLabelName, resolveActivityLabelColor, type ActivityLabel, type EventLabel } from "@/src/lib/domain";
+import { buildActivitySurface, normalizeLabelName, resolveActivityLabelColor, type ActivityLabel, type EventLabel } from "@/src/lib/domain";
 import {
   createActivityLabelIfMissing,
   createEventLabelIfMissing,
@@ -363,6 +363,11 @@ export default function SettingsScreen() {
                   const isEditing = editingActivityLabelId === label.id;
                   const isSaving = activeMutationKey === `activity:save:${label.id}`;
                   const isPinning = activeMutationKey === `activity:pin:${label.id}`;
+                  const activitySurface = buildActivitySurface(resolveActivityLabelColor(label), {
+                    backgroundAlpha: 0.18,
+                    borderAlpha: 0.6,
+                    textAlpha: 0.95,
+                  });
 
                   if (isEditing) {
                     return (
@@ -397,8 +402,11 @@ export default function SettingsScreen() {
                   return (
                     <View key={label.id} style={styles.labelRow}>
                       <View style={styles.labelNameWrap}>
-                        <View style={[styles.activityDot, { backgroundColor: resolveActivityLabelColor(label) }]} />
-                        <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
+                        <View style={[styles.activityPill, { backgroundColor: activitySurface.background, borderColor: activitySurface.border }]}>
+                          <Text style={[styles.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
+                            {label.name}
+                          </Text>
+                        </View>
                       </View>
                       <View style={styles.labelActions}>
                         <Pressable
@@ -654,7 +662,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   labelNameWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  activityPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    maxWidth: "100%",
+    flexShrink: 1,
+  },
+  activityPillText: { fontSize: fontSize.sm, fontWeight: "600" },
   labelName: { flex: 1, fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
   labelNamePinned: { color: colors.stone900, fontWeight: "600" },
   labelActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
