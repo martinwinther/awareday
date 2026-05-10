@@ -704,7 +704,9 @@ export default function TodayScreen() {
                     const match = openActivitiesToday.find((e) => e.normalizedLabel === normalizeLabelName(label));
                     if (match) void handleEndActivity(match);
                     else setErrorMessage(`No open activity matches "${label}". Choose one from the list below.`);
-                  } else if (openActivitiesToday.length > 0) {
+                  } else if (openActivitiesToday.length === 1) {
+                    void handleEndActivity(openActivitiesToday[0]);
+                  } else if (openActivitiesToday.length > 1) {
                     setShowEndActivityPicker(true);
                   }
                 }}
@@ -713,7 +715,7 @@ export default function TodayScreen() {
                 <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
               </Pressable>
             </View>
-            <Text style={s.helperText}>Leave this blank to choose from open activities.</Text>
+            <Text style={s.helperText}>Leave blank to end your only open activity or choose from the list.</Text>
             {activityQuickLabels === null ? (
               <ActivityIndicator color={colors.amber600} />
             ) : (
