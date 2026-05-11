@@ -659,6 +659,10 @@ export default function TodayScreen() {
   };
 
   const isMutatingActivity = isStartingActivity || isEndingActivity;
+  const trimmedActivityLabel = activityLabelInput.trim();
+  const endActivityHint = trimmedActivityLabel.length === 0 && openActivitiesToday.length === 1
+    ? `Will end: ${openActivitiesToday[0].label}`
+    : "Leave blank to end your only open activity or choose from the list.";
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + spacing.lg, paddingHorizontal: contentHorizontalPadding }]}> 
@@ -715,7 +719,7 @@ export default function TodayScreen() {
                 <Text style={s.buttonTextWhite}>{isEndingActivity ? "Ending..." : "End activity"}</Text>
               </Pressable>
             </View>
-            <Text style={s.helperText}>Leave blank to end your only open activity or choose from the list.</Text>
+            <Text style={s.helperText}>{endActivityHint}</Text>
             {activityQuickLabels === null ? (
               <ActivityIndicator color={colors.amber600} />
             ) : (
