@@ -326,7 +326,11 @@ export default function TodayScreen() {
 
   const handleStartActivity = useCallback(async (label: string) => {
     const cleaned = label.trim();
-    if (!user || cleaned.length === 0) return;
+    if (!user) return;
+    if (cleaned.length === 0) {
+      setErrorMessage("Add a label or tap a quick start.");
+      return;
+    }
     setIsStartingActivity(true);
     setErrorMessage(null);
     try {
@@ -361,7 +365,11 @@ export default function TodayScreen() {
 
   const handleLogEvent = useCallback(async (label: string) => {
     const cleaned = label.trim();
-    if (!user || cleaned.length === 0) return;
+    if (!user) return;
+    if (cleaned.length === 0) {
+      setErrorMessage("Add a label or tap a quick check-in.");
+      return;
+    }
     setIsSubmittingEvent(true);
     setErrorMessage(null);
     try {
