@@ -703,6 +703,14 @@ export default function TodayScreen() {
               value={activityLabelInput}
               onChangeText={setActivityLabelInput}
               editable={!isMutatingActivity}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (isMutatingActivity) {
+                  return;
+                }
+
+                void handleStartActivity(activityLabelInput);
+              }}
             />
             <View style={[s.buttonRow, isCompactWidth && s.buttonColumn]}>
               <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
@@ -775,6 +783,14 @@ export default function TodayScreen() {
               value={eventLabelInput}
               onChangeText={setEventLabelInput}
               editable={!isSubmittingEvent}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                if (isSubmittingEvent) {
+                  return;
+                }
+
+                void handleLogEvent(eventLabelInput);
+              }}
             />
             <Text style={s.helperText}>Use this for quick recurring logs like coffee, water, medication, mood check, or symptom check.</Text>
             <Pressable style={[s.primaryButton, isSubmittingEvent && s.disabled]} onPress={() => void handleLogEvent(eventLabelInput)} disabled={isSubmittingEvent}>
