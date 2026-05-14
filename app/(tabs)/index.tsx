@@ -146,7 +146,6 @@ export default function TodayScreen() {
   const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
 
   const isCompactWidth = width < 380;
-  const isWideLayout = width >= layout.wideWebWidth;
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
   const loadActivities = useCallback(async (userId: string) => {
@@ -689,9 +688,9 @@ export default function TodayScreen() {
           <Text style={s.quickStageHint}>Log now. Edit later.</Text>
         </View>
 
-        <View style={[s.quickLanes, isWideLayout && s.quickLanesWide]}>
+        <View style={s.quickLanes}>
           {/* Activity quick log */}
-          <Card style={[s.quickLaneCard, isWideLayout && s.quickLaneCardWide]}>
+          <Card style={s.quickLaneCard}>
             <View style={s.sectionHeader}>
               <SectionLabel>Activities</SectionLabel>
               <View style={s.badge}><Text style={s.badgeText}>{openActivitiesToday.length} open</Text></View>
@@ -774,7 +773,7 @@ export default function TodayScreen() {
           </Card>
 
           {/* Check-in quick log */}
-          <Card style={[s.quickLaneCard, isWideLayout && s.quickLaneCardWide]}>
+          <Card style={s.quickLaneCard}>
             <SectionLabel>Counters / check-ins</SectionLabel>
             <TextInput
               style={s.input}
@@ -1324,10 +1323,6 @@ const s = StyleSheet.create({
   quickLanes: {
     gap: spacing.lg,
   },
-  quickLanesWide: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
   quickStageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1343,9 +1338,6 @@ const s = StyleSheet.create({
   quickLaneCard: {
     backgroundColor: colors.backgroundCard,
     gap: spacing.md,
-  },
-  quickLaneCardWide: {
-    flex: 1,
   },
   secondaryStack: {
     gap: spacing.xl,
