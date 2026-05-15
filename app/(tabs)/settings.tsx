@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform, useWindowDimensions } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, Platform, useWindowDimensions, Modal } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FirebaseError } from "firebase/app";
 import { Card } from "@/src/components/card";
@@ -57,6 +57,10 @@ function sortLabelsByPinned<TLabel extends { name: string; pinned?: boolean }>(l
   });
 }
 
+type LabelActionTarget =
+  | { kind: "activity"; label: ActivityLabel }
+  | { kind: "event"; label: EventLabel };
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -73,6 +77,7 @@ export default function SettingsScreen() {
   const [editingActivityLabelInput, setEditingActivityLabelInput] = useState("");
   const [editingEventLabelInput, setEditingEventLabelInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeLabelAction, setActiveLabelAction] = useState<LabelActionTarget | null>(null);
 
   const loadActivityLabelsFromFirestore = useCallback(async (userId: string) => {
     setIsLoadingActivityLabels(true);
@@ -111,6 +116,7 @@ export default function SettingsScreen() {
       setEditingActivityLabelInput("");
       setEditingEventLabelInput("");
       setActiveMutationKey(null);
+      setActiveLabelAction(null);
       setErrorMessage(null);
       return;
     }
@@ -126,6 +132,59 @@ export default function SettingsScreen() {
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
   const displayedActivityLabels = useMemo(() => sortLabelsByPinned(activityLabels), [activityLabels]);
   const displayedEventLabels = useMemo(() => sortLabelsByPinned(eventLabels), [eventLabels]);
+  const activeActionLabel = activeLabelAction?.label ?? null;
+  const activeActionKind = activeLabelAction?.kind ?? null;
+  const actionSheetSubtitle = activeActionKind === "activity"
+    ? "Activity label"
+    : activeActionKind === "event"
+      ? "Check-in label"
+      : "Label";
+  const actionSheetPinText = activeActionLabel?.pinned ? "Unpin label" : "Pin label";
+
+  const openLabelActionSheet = (kind: LabelActionTarget["kind"], label: ActivityLabel | EventLabel) => {
+    if (isMutating) return;
+    setActiveLabelAction({ kind, label } as LabelActionTarget);
+  };
+
+  const closeLabelActionSheet = () => {
+    setActiveLabelAction(null);
+  };
+
+  const handleActionSheetPinToggle = () => {
+    if (!activeLabelAction) return;
+    closeLabelActionSheet();
+
+    if (activeLabelAction.kind === "activity") {
+      void handleToggleActivityPinned(activeLabelAction.label);
+    } else {
+      void handleToggleEventPinned(activeLabelAction.label);
+    }
+  };
+
+  const handleActionSheetRename = () => {
+    if (!activeLabelAction) return;
+
+    if (activeLabelAction.kind === "activity") {
+      setEditingActivityLabelId(activeLabelAction.label.id);
+      setEditingActivityLabelInput(activeLabelAction.label.name);
+    } else {
+      setEditingEventLabelId(activeLabelAction.label.id);
+      setEditingEventLabelInput(activeLabelAction.label.name);
+    }
+
+    closeLabelActionSheet();
+  };
+
+  const handleActionSheetDelete = () => {
+    if (!activeLabelAction) return;
+    closeLabelActionSheet();
+
+    if (activeLabelAction.kind === "activity") {
+      void handleDeleteActivityLabel(activeLabelAction.label);
+    } else {
+      void handleDeleteEventLabel(activeLabelAction.label);
+    }
+  };
 
   // Activity label handlers
 
@@ -325,6 +384,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.section}>
             <SectionLabel>Activity labels</SectionLabel>
+            <Text style={styles.sectionHint}>Tap a label to manage it.</Text>
             <View style={styles.addForm}>
               <TextInput
                 style={styles.input}
@@ -362,7 +422,6 @@ export default function SettingsScreen() {
                 {displayedActivityLabels.map((label) => {
                   const isEditing = editingActivityLabelId === label.id;
                   const isSaving = activeMutationKey === `activity:save:${label.id}`;
-                  const isPinning = activeMutationKey === `activity:pin:${label.id}`;
                   const activitySurface = buildActivitySurface(resolveActivityLabelColor(label), {
                     backgroundAlpha: 0.18,
                     borderAlpha: 0.6,
@@ -400,7 +459,19 @@ export default function SettingsScreen() {
                   }
 
                   return (
-                    <View key={label.id} style={styles.labelRow}>
+                    <Pressable
+                      key={label.id}
+                      style={({ pressed }) => [
+                        styles.labelRow,
+                        pressed && styles.labelRowPressed,
+                        isMutating && styles.disabled,
+                      ]}
+                      onPress={() => openLabelActionSheet("activity", label)}
+                      disabled={isMutating}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Manage ${label.name}`}
+                      accessibilityHint="Opens actions for this activity label"
+                    >
                       <View style={styles.labelNameWrap}>
                         <View style={[styles.activityPill, { backgroundColor: activitySurface.background, borderColor: activitySurface.border }]}>
                           <Text style={[styles.activityPillText, { color: activitySurface.text }]} numberOfLines={1}>
@@ -408,41 +479,13 @@ export default function SettingsScreen() {
                           </Text>
                         </View>
                       </View>
-                      <View style={styles.labelActions}>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonIconOnly, label.pinned && styles.actionButtonPinned, isMutating && styles.disabled]}
-                          onPress={() => void handleToggleActivityPinned(label)}
-                          disabled={isMutating}
-                          accessibilityRole="button"
-                          accessibilityLabel={label.pinned ? `Unpin ${label.name}` : `Pin ${label.name}`}
-                          accessibilityHint="Prioritizes this label in Today quick log"
-                        >
-                          {isPinning ? (
-                            <ActivityIndicator size="small" color={label.pinned ? colors.amber900 : colors.stone700} />
-                          ) : (
-                            <FontAwesome name={label.pinned ? "star" : "star-o"} size={12} color={label.pinned ? colors.amber900 : colors.stone700} />
-                          )}
-                        </Pressable>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
-                          onPress={() => { setEditingActivityLabelId(label.id); setEditingActivityLabelInput(label.name); }}
-                          disabled={isMutating}
-                          accessibilityLabel={`Rename ${label.name}`}
-                        >
-                          <FontAwesome name="pencil" size={12} color={colors.stone700} />
-                        </Pressable>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
-                          onPress={() => void handleDeleteActivityLabel(label)}
-                          disabled={isMutating}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Delete ${label.name}`}
-                          accessibilityHint="Removes this activity label"
-                        >
-                          <FontAwesome name="trash" size={12} color={colors.white} />
-                        </Pressable>
+                      <View style={styles.labelRowRight}>
+                        {label.pinned ? (
+                          <FontAwesome name="star" size={12} color={colors.amber800} />
+                        ) : null}
+                        <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -454,6 +497,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.section}>
             <SectionLabel>Check-in labels</SectionLabel>
+            <Text style={styles.sectionHint}>Tap a label to manage it.</Text>
             <View style={styles.addForm}>
               <TextInput
                 style={styles.input}
@@ -491,7 +535,6 @@ export default function SettingsScreen() {
                 {displayedEventLabels.map((label) => {
                   const isEditing = editingEventLabelId === label.id;
                   const isSaving = activeMutationKey === `event:save:${label.id}`;
-                  const isPinning = activeMutationKey === `event:pin:${label.id}`;
 
                   if (isEditing) {
                     return (
@@ -524,43 +567,27 @@ export default function SettingsScreen() {
                   }
 
                   return (
-                    <View key={label.id} style={styles.labelRow}>
+                    <Pressable
+                      key={label.id}
+                      style={({ pressed }) => [
+                        styles.labelRow,
+                        pressed && styles.labelRowPressed,
+                        isMutating && styles.disabled,
+                      ]}
+                      onPress={() => openLabelActionSheet("event", label)}
+                      disabled={isMutating}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Manage ${label.name}`}
+                      accessibilityHint="Opens actions for this check-in label"
+                    >
                       <Text style={[styles.labelName, label.pinned && styles.labelNamePinned]} numberOfLines={1}>{label.name}</Text>
-                      <View style={styles.labelActions}>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonIconOnly, label.pinned && styles.actionButtonPinned, isMutating && styles.disabled]}
-                          onPress={() => void handleToggleEventPinned(label)}
-                          disabled={isMutating}
-                          accessibilityRole="button"
-                          accessibilityLabel={label.pinned ? `Unpin ${label.name}` : `Pin ${label.name}`}
-                          accessibilityHint="Prioritizes this label in Today quick log"
-                        >
-                          {isPinning ? (
-                            <ActivityIndicator size="small" color={label.pinned ? colors.amber900 : colors.stone700} />
-                          ) : (
-                            <FontAwesome name={label.pinned ? "star" : "star-o"} size={12} color={label.pinned ? colors.amber900 : colors.stone700} />
-                          )}
-                        </Pressable>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonIconOnly, isMutating && styles.disabled]}
-                          onPress={() => { setEditingEventLabelId(label.id); setEditingEventLabelInput(label.name); }}
-                          disabled={isMutating}
-                          accessibilityLabel={`Rename ${label.name}`}
-                        >
-                          <FontAwesome name="pencil" size={12} color={colors.stone700} />
-                        </Pressable>
-                        <Pressable
-                          style={[styles.actionButton, styles.actionButtonWarning, styles.actionButtonIconOnly, isMutating && styles.disabled]}
-                          onPress={() => void handleDeleteEventLabel(label)}
-                          disabled={isMutating}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Delete ${label.name}`}
-                          accessibilityHint="Removes this check-in label"
-                        >
-                          <FontAwesome name="trash" size={12} color={colors.white} />
-                        </Pressable>
+                      <View style={styles.labelRowRight}>
+                        {label.pinned ? (
+                          <FontAwesome name="star" size={12} color={colors.amber800} />
+                        ) : null}
+                        <FontAwesome name="chevron-right" size={12} color={colors.stone400} />
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -583,6 +610,65 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </Card>
+
+        <Modal
+          visible={activeLabelAction !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={closeLabelActionSheet}
+        >
+          <View style={styles.sheetBackdrop}>
+            <Pressable
+              style={styles.sheetBackdropPressable}
+              onPress={closeLabelActionSheet}
+              accessibilityRole="button"
+              accessibilityLabel="Close label actions"
+            />
+            <View style={styles.sheetCard}>
+              <Text style={styles.sheetTitle}>{activeActionLabel?.name}</Text>
+              <Text style={styles.sheetSubtitle}>{actionSheetSubtitle}</Text>
+
+              <Pressable
+                style={[styles.sheetAction, isMutating && styles.disabled]}
+                onPress={handleActionSheetPinToggle}
+                disabled={isMutating}
+                accessibilityRole="button"
+                accessibilityLabel={actionSheetPinText}
+              >
+                <Text style={styles.sheetActionText}>{actionSheetPinText}</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.sheetAction, isMutating && styles.disabled]}
+                onPress={handleActionSheetRename}
+                disabled={isMutating}
+                accessibilityRole="button"
+                accessibilityLabel="Rename label"
+              >
+                <Text style={styles.sheetActionText}>Rename label</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.sheetAction, styles.sheetActionDestructive, isMutating && styles.disabled]}
+                onPress={handleActionSheetDelete}
+                disabled={isMutating}
+                accessibilityRole="button"
+                accessibilityLabel="Delete label"
+              >
+                <Text style={styles.sheetActionDestructiveText}>Delete label</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.sheetCancel}
+                onPress={closeLabelActionSheet}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <Text style={styles.sheetCancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -610,6 +696,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   heading: { fontSize: fontSize.lg, fontWeight: "700", color: colors.stone900 },
+  sectionHint: { fontSize: fontSize.xs, color: colors.stone500 },
   description: { fontSize: fontSize.sm, color: colors.stone600, lineHeight: 20 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
@@ -661,7 +748,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
+  labelRowPressed: {
+    backgroundColor: colors.backgroundMuted,
+  },
   labelNameWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  labelRowRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   activityPill: {
     alignSelf: "flex-start",
     borderWidth: 1,
@@ -686,20 +777,6 @@ const styles = StyleSheet.create({
   actionButtonText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone700 },
   actionButtonPrimary: { backgroundColor: colors.amber900, borderColor: colors.amber900 },
   actionButtonPrimaryText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
-  actionButtonWarning: { backgroundColor: colors.orange700, borderColor: colors.orange700 },
-  actionButtonPinned: {
-    backgroundColor: colors.backgroundAmberSoft,
-    borderColor: colors.amber300,
-  },
-  actionButtonIconOnly: {
-    width: controlSize.md,
-    height: controlSize.md,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   signOutButton: {
     borderWidth: 1,
     borderColor: colors.rose200,
@@ -710,4 +787,62 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   signOutButtonText: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlayBackdrop,
+    justifyContent: "flex-end",
+    padding: spacing.lg,
+  },
+  sheetBackdropPressable: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sheetCard: {
+    backgroundColor: colors.backgroundCard,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  sheetTitle: {
+    fontSize: fontSize.base,
+    fontWeight: "700",
+    color: colors.stone900,
+  },
+  sheetSubtitle: {
+    fontSize: fontSize.xs,
+    color: colors.stone500,
+    marginBottom: spacing.xs,
+  },
+  sheetAction: {
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    backgroundColor: colors.backgroundSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  sheetActionText: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.stone800,
+  },
+  sheetActionDestructive: {
+    borderColor: colors.rose200,
+    backgroundColor: colors.rose50,
+  },
+  sheetActionDestructiveText: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.rose700,
+  },
+  sheetCancel: {
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+  },
+  sheetCancelText: {
+    fontSize: fontSize.sm,
+    fontWeight: "600",
+    color: colors.stone700,
+  },
 });
