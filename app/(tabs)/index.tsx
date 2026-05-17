@@ -993,17 +993,6 @@ export default function TodayScreen() {
                     </View>
                     <Text style={s.timelineTime}>{formatClockTime(entry.timestamp.toDate())}</Text>
                   </Pressable>
-                  <View style={s.timelineRight}>
-                    <Pressable
-                      style={s.deleteIconButton}
-                      onPress={() => void handleDeleteTimelineItem(item)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete ${badgeLabel.toLowerCase()} entry for ${entry.label}`}
-                      accessibilityHint="Removes this entry from your timeline"
-                    >
-                      <FontAwesome name="trash" size={12} color={colors.white} />
-                    </Pressable>
-                  </View>
                 </View>
               );
             })
@@ -1411,21 +1400,12 @@ const s = StyleSheet.create({
     gap: spacing.sm,
   },
   timelineLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1, minWidth: 0 },
-  timelineRight: { flexDirection: "row", alignItems: "center" },
   timelineBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   timelineBadgeText: { color: colors.white, fontSize: fontSize.caption, fontWeight: "600" },
   timelineLabel: { fontSize: fontSize.sm, color: colors.stone800, flex: 1 },
   timelineActivityPill: { paddingHorizontal: spacing.sm, paddingVertical: 2 },
   timelineActivityPillText: { fontSize: fontSize.sm },
   timelineTime: { fontSize: fontSize.xs, color: colors.stone500 },
-  deleteIconButton: {
-    width: controlSize.md,
-    height: controlSize.md,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.rose700,
-  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: colors.overlayBackdrop,
