@@ -2,9 +2,9 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
-import { colors, controlSize, fontSize, radius, spacing } from "@/src/theme";
+import { colors, controlSize, fontSize, getScreenHorizontalPadding, layout, radius, spacing } from "@/src/theme";
 
 const TAB_ICON_BY_ROUTE: Record<string, React.ComponentProps<typeof FontAwesome>["name"]> = {
   index: "sun-o",
@@ -38,10 +38,15 @@ function getTabLabel(routeName: string, tabBarLabel?: string | ((props: { focuse
 }
 
 function FloatingTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
+  const { width } = useWindowDimensions();
+  const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
   const bottomOffset = insets.bottom > 0 ? insets.bottom + spacing.xs : spacing.lg;
 
   return (
-    <View pointerEvents="box-none" style={[styles.tabBarOuter, { bottom: bottomOffset }]}> 
+    <View
+      pointerEvents="box-none"
+      style={[styles.tabBarOuter, { bottom: bottomOffset, paddingHorizontal: contentHorizontalPadding }]}
+    >
       <View style={styles.tabBarShell}>
         <BlurView intensity={44} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.tabBarGlassTint} />
@@ -141,8 +146,9 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBarOuter: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
+    width: "100%",
+    maxWidth: layout.contentMaxWidth,
+    alignSelf: "center",
   },
   tabBarShell: {
     backgroundColor: colors.transparent,
