@@ -567,30 +567,34 @@ export default function HistoryScreen() {
           <View style={styles.section}>
             <SectionLabel>History</SectionLabel>
             <View style={styles.dayPicker}>
-              <Pressable
-                style={styles.dayButton}
-                onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, -1))}
-                accessibilityLabel="Previous day"
-                accessibilityRole="button"
-                accessibilityHint="Show the previous day in history"
-              >
-                <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
-              </Pressable>
               <Text style={styles.dayLabel}>{formattedSelectedDay}</Text>
-              <Pressable
-                style={[styles.dayButton, isSelectedDayToday && styles.dayButtonDisabled]}
-                onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, 1))}
-                disabled={isSelectedDayToday}
-                accessibilityLabel="Next day"
-                accessibilityRole="button"
-                accessibilityHint={isSelectedDayToday ? "Already on today" : "Show the next day in history"}
-              >
-                <FontAwesome
-                  name="chevron-right"
-                  size={12}
-                  color={isSelectedDayToday ? colors.stone400 : colors.stone700}
-                />
-              </Pressable>
+              <View style={styles.dayControls}>
+                <Pressable
+                  style={styles.dayControlButton}
+                  onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, -1))}
+                  accessibilityLabel="Previous day"
+                  accessibilityRole="button"
+                  accessibilityHint="Show the previous day in history"
+                >
+                  <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
+                  <Text style={styles.dayControlText}>Previous day</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.dayControlButton, isSelectedDayToday && styles.dayControlButtonDisabled]}
+                  onPress={() => setSelectedDay((previousDay) => shiftLocalDay(previousDay, 1))}
+                  disabled={isSelectedDayToday}
+                  accessibilityLabel="Next day"
+                  accessibilityRole="button"
+                  accessibilityHint={isSelectedDayToday ? "Already on today" : "Show the next day in history"}
+                >
+                  <Text style={[styles.dayControlText, isSelectedDayToday && styles.dayControlTextDisabled]}>Next day</Text>
+                  <FontAwesome
+                    name="chevron-right"
+                    size={12}
+                    color={isSelectedDayToday ? colors.stone400 : colors.stone700}
+                  />
+                </Pressable>
+              </View>
             </View>
           </View>
         </Card>
@@ -997,30 +1001,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   dayPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: colors.backgroundMuted,
     borderWidth: 1,
     borderColor: colors.borderAmber,
     borderRadius: radius.lg,
-    minHeight: controlSize.lg,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    padding: spacing.sm,
+    gap: spacing.sm,
   },
-  dayButton: {
+  dayLabel: { textAlign: "center", fontSize: fontSize.sm, fontWeight: "700", color: colors.stone800 },
+  dayControls: { flexDirection: "row", gap: spacing.sm },
+  dayControlButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.borderAmber,
     backgroundColor: colors.backgroundLight,
-    borderRadius: radius.full,
-    width: controlSize.md,
-    height: controlSize.md,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: radius.lg,
+    minHeight: controlSize.lg,
   },
-  dayButtonDisabled: { opacity: 0.45 },
+  dayControlButtonDisabled: {
+    backgroundColor: colors.backgroundMuted,
+  },
+  dayControlText: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone700 },
+  dayControlTextDisabled: { color: colors.stone400 },
   disabled: { opacity: 0.45 },
-  dayLabel: { flex: 1, textAlign: "center", fontSize: fontSize.xs, fontWeight: "700", color: colors.stone800 },
   errorBox: { backgroundColor: colors.rose50, borderWidth: 1, borderColor: colors.rose200, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   errorTitle: { fontSize: fontSize.sm, fontWeight: "600", color: colors.rose700 },
   errorText: { fontSize: fontSize.xs, color: colors.rose700 },

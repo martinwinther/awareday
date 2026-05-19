@@ -288,26 +288,30 @@ export default function WeeklyReviewScreen() {
           <View style={styles.section}>
             <SectionLabel>Weekly review</SectionLabel>
             <View style={styles.weekPicker}>
-              <Pressable
-                style={styles.weekButton}
-                onPress={() => setAnchorDay((previous) => shiftWeek(previous, -1))}
-                accessibilityLabel="Previous week"
-                accessibilityRole="button"
-                accessibilityHint="Show the previous week in review"
-              >
-                <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
-              </Pressable>
               <Text style={styles.weekLabel}>{weekLabel}</Text>
-              <Pressable
-                style={[styles.weekButton, isViewingCurrentWeek && styles.weekButtonDisabled]}
-                onPress={() => setAnchorDay((previous) => shiftWeek(previous, 1))}
-                disabled={isViewingCurrentWeek}
-                accessibilityLabel="Next week"
-                accessibilityRole="button"
-                accessibilityHint={isViewingCurrentWeek ? "Already on the current week" : "Show the next week in review"}
-              >
-                <FontAwesome name="chevron-right" size={12} color={isViewingCurrentWeek ? colors.stone400 : colors.stone700} />
-              </Pressable>
+              <View style={styles.weekControls}>
+                <Pressable
+                  style={styles.weekControlButton}
+                  onPress={() => setAnchorDay((previous) => shiftWeek(previous, -1))}
+                  accessibilityLabel="Previous week"
+                  accessibilityRole="button"
+                  accessibilityHint="Show the previous week in review"
+                >
+                  <FontAwesome name="chevron-left" size={12} color={colors.stone700} />
+                  <Text style={styles.weekControlText}>Previous week</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.weekControlButton, isViewingCurrentWeek && styles.weekControlButtonDisabled]}
+                  onPress={() => setAnchorDay((previous) => shiftWeek(previous, 1))}
+                  disabled={isViewingCurrentWeek}
+                  accessibilityLabel="Next week"
+                  accessibilityRole="button"
+                  accessibilityHint={isViewingCurrentWeek ? "Already on the current week" : "Show the next week in review"}
+                >
+                  <Text style={[styles.weekControlText, isViewingCurrentWeek && styles.weekControlTextDisabled]}>Next week</Text>
+                  <FontAwesome name="chevron-right" size={12} color={isViewingCurrentWeek ? colors.stone400 : colors.stone700} />
+                </Pressable>
+              </View>
             </View>
             <Text style={styles.helperText}>A seven-day view based on your locale week start.</Text>
           </View>
@@ -650,37 +654,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   weekPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: colors.backgroundMuted,
     borderWidth: 1,
     borderColor: colors.borderAmber,
     borderRadius: radius.lg,
-    minHeight: controlSize.lg,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  weekButton: {
-    borderWidth: 1,
-    borderColor: colors.borderAmber,
-    backgroundColor: colors.backgroundLight,
-    borderRadius: radius.full,
-    width: controlSize.md,
-    height: controlSize.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  weekButtonDisabled: {
-    opacity: 0.45,
+    padding: spacing.sm,
+    gap: spacing.sm,
   },
   weekLabel: {
-    flex: 1,
     textAlign: "center",
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontWeight: "700",
     color: colors.stone800,
   },
+  weekControls: { flexDirection: "row", gap: spacing.sm },
+  weekControlButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.borderAmber,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: radius.lg,
+    minHeight: controlSize.lg,
+  },
+  weekControlButtonDisabled: {
+    backgroundColor: colors.backgroundMuted,
+  },
+  weekControlText: { fontSize: fontSize.xs, fontWeight: "600", color: colors.stone700 },
+  weekControlTextDisabled: { color: colors.stone400 },
   helperText: {
     fontSize: fontSize.xs,
     color: colors.stone500,
