@@ -146,6 +146,7 @@ export default function TodayScreen() {
   const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
 
   const isCompactWidth = width < 380;
+  const scheduleMaxHeight = Platform.OS === "web" ? (isCompactWidth ? 320 : 360) : undefined;
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
   const loadActivities = useCallback(async (userId: string) => {
@@ -930,7 +931,7 @@ export default function TodayScreen() {
               currentTime={currentTime}
               showCurrentTimeIndicator
               autoScrollToCurrentTimeOnMount
-              maxVisibleHeight={isCompactWidth ? 320 : 360}
+              maxVisibleHeight={scheduleMaxHeight}
               activityColorByLabel={activityColorByLabel}
               onPressActivityBlock={handleScheduleActivityBlockPress}
               onPressEventMarker={handleScheduleEventMarkerPress}
