@@ -132,6 +132,7 @@ export default function SettingsScreen() {
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
   const displayedActivityLabels = useMemo(() => sortLabelsByPinned(activityLabels), [activityLabels]);
   const displayedEventLabels = useMemo(() => sortLabelsByPinned(eventLabels), [eventLabels]);
+  const isCompactWidth = width < 380;
   const activeActionLabel = activeLabelAction?.label ?? null;
   const activeActionKind = activeLabelAction?.kind ?? null;
   const actionSheetSubtitle = activeActionKind === "activity"
@@ -385,7 +386,7 @@ export default function SettingsScreen() {
           <View style={styles.section}>
             <SectionLabel>Activity labels</SectionLabel>
             <Text style={styles.sectionHint}>Tap a label to manage it.</Text>
-            <View style={styles.addForm}>
+            <View style={[styles.addForm, isCompactWidth && styles.addFormStacked]}>
               <TextInput
                 style={styles.input}
                 value={activityLabelInput}
@@ -395,7 +396,7 @@ export default function SettingsScreen() {
                 editable={!isMutating}
               />
               <Pressable
-                style={[styles.addButton, isMutating && styles.disabled]}
+                style={[styles.addButton, isCompactWidth && styles.addButtonFull, isMutating && styles.disabled]}
                 onPress={() => void handleAddActivityLabel()}
                 disabled={isMutating}
                 accessibilityRole="button"
@@ -498,7 +499,7 @@ export default function SettingsScreen() {
           <View style={styles.section}>
             <SectionLabel>Check-in labels</SectionLabel>
             <Text style={styles.sectionHint}>Tap a label to manage it.</Text>
-            <View style={styles.addForm}>
+            <View style={[styles.addForm, isCompactWidth && styles.addFormStacked]}>
               <TextInput
                 style={styles.input}
                 value={eventLabelInput}
@@ -508,7 +509,7 @@ export default function SettingsScreen() {
                 editable={!isMutating}
               />
               <Pressable
-                style={[styles.addButton, isMutating && styles.disabled]}
+                style={[styles.addButton, isCompactWidth && styles.addButtonFull, isMutating && styles.disabled]}
                 onPress={() => void handleAddEventLabel()}
                 disabled={isMutating}
                 accessibilityRole="button"
@@ -715,6 +716,7 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { fontSize: fontSize.sm, color: colors.stone500 },
   addForm: { flexDirection: "row", gap: spacing.sm },
+  addFormStacked: { flexDirection: "column" },
   input: {
     flex: 1,
     height: 44,
@@ -733,6 +735,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amber900,
     justifyContent: "center",
     alignItems: "center",
+  },
+  addButtonFull: {
+    width: "100%",
+    borderRadius: radius.lg,
   },
   disabled: { opacity: 0.45 },
   labelList: { gap: spacing.sm },
