@@ -146,6 +146,7 @@ export default function TodayScreen() {
   const [isSavingEntryEdit, setIsSavingEntryEdit] = useState(false);
 
   const isCompactWidth = width < 380;
+  const stackActivityButtons = Platform.OS !== "web" || width < layout.compactWebWidth;
   const scheduleMaxHeight = Platform.OS === "web" ? (isCompactWidth ? 320 : 360) : undefined;
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
@@ -712,7 +713,7 @@ export default function TodayScreen() {
                 void handleStartActivity(activityLabelInput);
               }}
             />
-            <View style={[s.buttonRow, isCompactWidth && s.buttonColumn]}>
+            <View style={[s.buttonRow, stackActivityButtons && s.buttonColumn]}>
               <Pressable style={[s.startButton, isMutatingActivity && s.disabled]} onPress={() => void handleStartActivity(activityLabelInput)} disabled={isMutatingActivity}>
                 <Text style={s.buttonTextWhite}>{isStartingActivity ? "Starting..." : "Start activity"}</Text>
               </Pressable>
