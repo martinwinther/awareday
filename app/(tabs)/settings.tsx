@@ -439,16 +439,16 @@ export default function SettingsScreen() {
                           editable={!isMutating}
                           autoFocus
                         />
-                        <View style={styles.labelActions}>
+                        <View style={[styles.labelActions, isCompactWidth && styles.labelActionsStacked]}>
                           <Pressable
-                            style={[styles.actionButton, styles.actionButtonPrimary, isMutating && styles.disabled]}
+                            style={[styles.actionButton, styles.actionButtonPrimary, isCompactWidth && styles.actionButtonFull, isMutating && styles.disabled]}
                             onPress={() => void handleSaveActivityLabel(label.id)}
                             disabled={isMutating}
                           >
                             <Text style={styles.actionButtonPrimaryText}>{isSaving ? "Saving..." : "Save"}</Text>
                           </Pressable>
                           <Pressable
-                            style={[styles.actionButton, isMutating && styles.disabled]}
+                            style={[styles.actionButton, isCompactWidth && styles.actionButtonFull, isMutating && styles.disabled]}
                             onPress={() => { setEditingActivityLabelId(null); setEditingActivityLabelInput(""); }}
                             disabled={isMutating}
                           >
@@ -547,16 +547,16 @@ export default function SettingsScreen() {
                           editable={!isMutating}
                           autoFocus
                         />
-                        <View style={styles.labelActions}>
+                        <View style={[styles.labelActions, isCompactWidth && styles.labelActionsStacked]}>
                           <Pressable
-                            style={[styles.actionButton, styles.actionButtonPrimary, isMutating && styles.disabled]}
+                            style={[styles.actionButton, styles.actionButtonPrimary, isCompactWidth && styles.actionButtonFull, isMutating && styles.disabled]}
                             onPress={() => void handleSaveEventLabel(label.id)}
                             disabled={isMutating}
                           >
                             <Text style={styles.actionButtonPrimaryText}>{isSaving ? "Saving..." : "Save"}</Text>
                           </Pressable>
                           <Pressable
-                            style={[styles.actionButton, isMutating && styles.disabled]}
+                            style={[styles.actionButton, isCompactWidth && styles.actionButtonFull, isMutating && styles.disabled]}
                             onPress={() => { setEditingEventLabelId(null); setEditingEventLabelInput(""); }}
                             disabled={isMutating}
                           >
@@ -772,6 +772,7 @@ const styles = StyleSheet.create({
   labelName: { flex: 1, fontSize: fontSize.sm, fontWeight: "500", color: colors.stone800 },
   labelNamePinned: { color: colors.stone900, fontWeight: "600" },
   labelActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  labelActionsStacked: { flexDirection: "column", alignItems: "stretch" },
   actionButton: {
     borderWidth: 1,
     borderColor: colors.borderAmber,
@@ -780,6 +781,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
   },
+  actionButtonFull: { alignItems: "center" },
   actionButtonText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.stone700 },
   actionButtonPrimary: { backgroundColor: colors.amber900, borderColor: colors.amber900 },
   actionButtonPrimaryText: { fontSize: fontSize.xs, fontWeight: "500", color: colors.white },
