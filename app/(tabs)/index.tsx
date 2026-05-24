@@ -147,6 +147,7 @@ export default function TodayScreen() {
 
   const isCompactWidth = width < 380;
   const stackActivityButtons = Platform.OS !== "web" || width < layout.compactWebWidth;
+  const stackTimelineHeader = Platform.OS !== "web" || width < layout.compactWebWidth;
   const scheduleMaxHeight = Platform.OS === "web" ? (isCompactWidth ? 320 : 360) : undefined;
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
 
@@ -944,7 +945,7 @@ export default function TodayScreen() {
       {/* Timeline */}
       <Card>
         <View style={s.cardSection}>
-          <View style={s.timelineHeader}>
+          <View style={[s.timelineHeader, stackTimelineHeader && s.timelineHeaderStacked]}>
             <SectionLabel>Today timeline</SectionLabel>
             <Text style={s.timelineEditHint}>Tap an entry to edit.</Text>
           </View>
@@ -1387,6 +1388,10 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+  },
+  timelineHeaderStacked: {
+    flexDirection: "column",
+    alignItems: "flex-start",
   },
   timelineEditHint: {
     fontSize: fontSize.xs,

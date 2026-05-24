@@ -299,6 +299,7 @@ export default function HistoryScreen() {
   }, []);
 
   const contentHorizontalPadding = getScreenHorizontalPadding(width, Platform.OS === "web");
+  const stackTimelineHeader = Platform.OS !== "web" || width < layout.compactWebWidth;
 
   const refreshSelectedDayEntries = useCallback(async () => {
     if (!user) {
@@ -683,7 +684,7 @@ export default function HistoryScreen() {
 
         <Card>
           <View style={styles.section}>
-            <View style={styles.timelineHeader}>
+            <View style={[styles.timelineHeader, stackTimelineHeader && styles.timelineHeaderStacked]}>
               <SectionLabel>Daily timeline</SectionLabel>
               <Text style={styles.timelineHint}>Tap an entry to edit.</Text>
             </View>
@@ -1172,6 +1173,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+  },
+  timelineHeaderStacked: {
+    flexDirection: "column",
+    alignItems: "flex-start",
   },
   timelineHint: {
     fontSize: fontSize.xs,
